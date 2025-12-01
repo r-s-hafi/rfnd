@@ -1,0 +1,29 @@
+Untitled project (Mini seeq clone)
+
+Functionality:
+Upload real-time process data into program using multiple tags
+Search those tags to trend data
+Detect anomalies within that data and generate reports
+
+Flow:
+User uploads CSV file with timestamps and values for individual tags -> insert data into SQLite3 database -> show data
+
+To do:
+Build system
+Ask chat for CSV generated with 3 tags
+Build script to read data into python
+
+Stack:
+Backend - FastAPI (Python)
+Frontend - HTMX/HTML/Tailwind/CSS
+Database - SQLite
+Plotting - Plotly
+
+ProcessPulse/
+├── app.py                      # FastAPI app
+├── database.py                 # SQLite functions
+├── generate_sample_data.py     # Sample data generator
+├── requirements.txt            # Dependencies
+├── templates/
+│   └── index.html              # Main page
+└── README.md 
