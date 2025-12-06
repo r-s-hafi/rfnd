@@ -46,4 +46,6 @@ Figure out how to keep HTML static for unaffected plots but add/remove new/old o
 Write program to generate CSV with more data
 Start adding analysis fxns
 
+Working on:
+Sizing the plots to be in an ordered portion of the page
 

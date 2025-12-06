@@ -52,7 +52,7 @@ async def get_tag_id(request: Request, tag_id: str = Form()) -> HTMLResponse:
       plot_count += 1
       rendered_html = render_html(tag_id, con_html, current_plots)
       return HTMLResponse(f"""
-                        <div id="plot-area" hx-swap-oob="true">
+                        <div id="plot-area" hx-swap-oob="true" style="width: 50%; height: 500px;">
                            {rendered_html}
                         </div>
                         """)

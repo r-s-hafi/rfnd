@@ -36,7 +36,7 @@ def plot_tag_data(con: Connection, tag_id: str) -> HTMLResponse:
     tag_id = tag_id.upper()
     df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data", con)
     fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
-    plot_html = pio.to_html(fig)     
+    plot_html = pio.to_html(fig, config={'responsive': True})     
     return plot_html
 
 #stores html for given tag id
