@@ -3,6 +3,7 @@ import pandas as pd
 from fastapi.responses import HTMLResponse
 import plotly.express as px
 import plotly.io as pio
+import plotly.graph_objects as go
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -31,6 +32,30 @@ def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLRes
     #generate html for queried tag id
     df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data", con)
     fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
+    #configure the plot to be dark mode with better contrast
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor='#1c2128',
+        plot_bgcolor='#0d1117',
+        font=dict(color='#c9d1d9', size=12),
+        title_font=dict(size=16, color='#e6edf3'),
+        xaxis=dict(
+            gridcolor='#30363d',
+            showgrid=True,
+            zeroline=False
+        ),
+        yaxis=dict(
+            gridcolor='#30363d',
+            showgrid=True,
+            zeroline=False
+        ),
+        margin=dict(l=60, r=40, t=60, b=50),
+        hovermode='x unified'
+    )
+    
+    # Make the line more visible
+    fig.update_traces(line=dict(width=2.5))
+
     plot_html = pio.to_html(fig, config={'responsive': True})     
     wrapped_html += f'<div id="plot">{plot_html}</div>'
 
@@ -38,6 +63,31 @@ def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLRes
     for stored_tags in current_plots:
         df = pd.read_sql(f"SELECT Time, {stored_tags} FROM process_data", con)
         fig = px.line(df, x="Time", y=stored_tags, title=f"{stored_tags}", labels={'Time': 'Time', stored_tags: 'Value'})
+        
+        #configure the plot to be dark mode with better contrast
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor='#1c2128',
+            plot_bgcolor='#0d1117',
+            font=dict(color='#c9d1d9', size=12),
+            title_font=dict(size=16, color='#e6edf3'),
+            xaxis=dict(
+                gridcolor='#30363d',
+                showgrid=True,
+                zeroline=False
+            ),
+            yaxis=dict(
+                gridcolor='#30363d',
+                showgrid=True,
+                zeroline=False
+            ),
+            margin=dict(l=60, r=40, t=60, b=50),
+            hovermode='x unified'
+        )
+        
+        # Make the line more visible
+        fig.update_traces(line=dict(width=2.5))
+
         stored_plot_html = pio.to_html(fig, config={'responsive': True})
         wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
 

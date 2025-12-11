@@ -2,6 +2,7 @@ from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import sqlite3
 
 import plotly.express as p
@@ -11,6 +12,7 @@ from database import initialize_db, generate_plots
 #create the fastapi instance, Jinja2 templates to return HTML, and initialize database
 app = FastAPI()
 templates = Jinja2Templates('./templates')
+app.mount("/static", StaticFiles(directory="static"), name="static")
 con_data = sqlite3.connect("process_data.db")
 #counter for number of plots
 plot_count = 0
@@ -38,7 +40,9 @@ async def get_tag_id(request: Request, tag_id: str = Form()) -> HTMLResponse:
                         <h1>Error plotting data for tag {tag_id}</h1>
                         <p>{e}</p>
                         """)
+   
    current_plots.clear()
+   
    #check for repeat plots
    if tag_id in current_plots:
       print(f"Plot already exists for tag {tag_id}")
@@ -47,9 +51,8 @@ async def get_tag_id(request: Request, tag_id: str = Form()) -> HTMLResponse:
       #if try block runs, add plot count to html response
       current_plots.append(tag_id)
       plot_count += 1
-      print(f'returning html for tag {tag_id} and plot count {plot_count} and current plots {current_plots} and plot html {plot_html}')
       return HTMLResponse(f"""
-                        <div id="plot-area" hx-swap-oob="true" style="width: 50%; height: 500px;">
+                        <div id="plot-area" hx-swap-oob="true"">
                            {plot_html}
                         </div>
                         """)

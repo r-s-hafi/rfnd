@@ -29,21 +29,18 @@ REFINED/
 └── README.md 
 
 Current status:
-Last updated: 12/02/2025 07:32
+Last updated: 12/09/2025 20:53
 
 Completed:
 Wrote functionality to read .csv sample file into SQL database using pandas dataframe
 Wrote rudimentary HTMX to receive and pass to /get-tag-id endpoint to fetch data and plot
 Wrote fxn to read sql database for tag id and collect data
 Passed that data to plotly to create interactive charts
-Return plotly as HTML
-Store html for each plot as a separate column within the database
-When returning html, find all of the tags in the list of current tags and find their database html
+Return plotly as HTML, regenerate all plots each time a tag is queried
+
 
 Next steps:
-****Actually go back and remove the html database, so much bloat for no reason
-****Just loop through each tag_id and regenerate the html, plotly is fast enough
-Setup rudimentary flexbox grid for multiple charts
+Setup rudimentary flexbox grid for multiple charts (use ai for this)
 Figure out how to keep HTML static for unaffected plots but add/remove new/old ones
 Write program to generate CSV with more data
 Start adding analysis fxns
