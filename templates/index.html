@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!--css -->
-    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        document.write('<link rel="stylesheet" href="/static/style.css?v=' + Date.now() + '">');
+    </script>
     <!-- htmx library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <title>REFINED</title>
@@ -19,7 +21,16 @@
         </form>
     </div>
 
-    <div id="plot-area" >
+    <div id="time-frame-selector">
+        <form hx-post="/update-time-frame" hx-trigger="submit" hx-target="#plot-area">
+            <input type="text" name="time_frame" class="input"  placeholder="Enter a time frame">
+        </form>
+    </div>
+
+    <div id="time-frame-area">
+        
+    </div>
+    <div id="plot-area">
     </div>
     
 </body>

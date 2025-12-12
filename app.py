@@ -7,13 +7,16 @@ import sqlite3
 
 import plotly.express as p
 
-from database import initialize_db, generate_plots
+from database import initialize_db, generate_plots, initialize_preferences
 
-#create the fastapi instance, Jinja2 templates to return HTML, and initialize database
+#create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
 templates = Jinja2Templates('./templates')
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
 con_data = sqlite3.connect("process_data.db")
+preference_data = sqlite3.connect("preferences.db")
+
 #counter for number of plots
 plot_count = 0
 #list of tags currently plotted
@@ -23,11 +26,12 @@ current_plots = []
 async def initialize(request: Request) -> HTMLResponse:
    #initialize database and populate with the data from the csv
    initialize_db(con_data)
+   initialize_preferences(preference_data)
    #return homepage "index.html"
    return templates.TemplateResponse(request, "index.html")
 
 @app.post("/get-tag-id")
-async def get_tag_id(request: Request, tag_id: str = Form()) -> HTMLResponse:
+async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
    global plot_count, current_plots
    tag_id = tag_id.upper()
@@ -56,3 +60,7 @@ async def get_tag_id(request: Request, tag_id: str = Form()) -> HTMLResponse:
                            {plot_html}
                         </div>
                         """)
+
+@app.post("/update-time-frame")
+async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLResponse:
+   pass

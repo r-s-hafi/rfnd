@@ -3,7 +3,7 @@ import pandas as pd
 from fastapi.responses import HTMLResponse
 import plotly.express as px
 import plotly.io as pio
-import plotly.graph_objects as go
+from datetime import datetime
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -22,6 +22,32 @@ def initialize_db(con: Connection) -> None:
     
     except Exception as e:
         print(f"Unable to import data: {e}")
+
+def initialize_preferences(con: Connection) -> None:
+    try:
+        with con:
+            cur = con.cursor()
+            cur.execute("""
+                        CREATE TABLE IF NOT EXISTS preferences(
+                        time_frame int,
+                        anchor_time datetime
+                        )""")
+            con.commit()
+
+            #check if preferences already exist
+            cur.execute("SELECT 1 FROM preferences where time_frame is not null")
+            exists = cur.fetchone()
+            
+            #only insert if table is empty
+            if not exists:
+                #set default time frame to 1 week and anchor time to current time
+                cur.execute("INSERT INTO preferences (time_frame, anchor_time) VALUES (?, ?)", 
+                           (604800, datetime.now()))
+                con.commit()
+
+
+    except Exception as e:
+        print(f"Unable to initialize user preferences: {e}")
 
 #plots data for given tag id and returns html
 def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLResponse:
