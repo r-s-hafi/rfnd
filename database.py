@@ -42,12 +42,23 @@ def initialize_preferences(con: Connection) -> None:
             if not exists:
                 #set default time frame to 1 week and anchor time to current time
                 cur.execute("INSERT INTO preferences (time_frame, anchor_time) VALUES (?, ?)", 
-                           (604800, datetime.now()))
+                           (60, datetime.now()))
                 con.commit()
 
 
     except Exception as e:
         print(f"Unable to initialize user preferences: {e}")
+
+def update_preferences(con: Connection, time_frame: float) -> None:
+    try:
+        with con:
+            cur = con.cursor()
+            # Update all rows (should only be one row based on initialize_preferences)
+            cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, datetime.now()))
+            con.commit()
+
+    except Exception as e:
+        print(f"Unable to update user preferences: {e}")
 
 #plots data for given tag id and returns html
 def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLResponse:
@@ -58,6 +69,7 @@ def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLRes
     #generate html for queried tag id
     df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data", con)
     fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
+
     #configure the plot to be dark mode with better contrast
     fig.update_layout(
         template="plotly_dark",

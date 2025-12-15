@@ -23,7 +23,11 @@
 
     <div id="time-frame-selector">
         <form hx-post="/update-time-frame" hx-trigger="submit" hx-target="#plot-area">
-            <input type="text" name="time_frame" class="input"  placeholder="Enter a time frame">
+            <input type="text" name="time_frame" class="input"  placeholder="Enter a time frame (ex: 1 week)">
+            <input type="submit" name="go_past" class="button" value="<<">
+            <input type="submit" name="go_back" class="button" value="<">
+            <input type="submit" name="go_forward" class="button" value=">">
+            <input type="submit" name="go_present" class="button" value=">>">
         </form>
     </div>
 

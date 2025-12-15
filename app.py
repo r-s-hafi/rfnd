@@ -5,9 +5,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import sqlite3
 
-import plotly.express as p
 
-from database import initialize_db, generate_plots, initialize_preferences
+from database import initialize_db, generate_plots, initialize_preferences, update_preferences
+from datamanipulation import detect_time_frame
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
@@ -63,4 +63,17 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
 
 @app.post("/update-time-frame")
 async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLResponse:
-   pass
+   if time_frame:
+      cleaned_time_frame = detect_time_frame(time_frame)
+      if cleaned_time_frame:
+         print(f"Time frame updated to {cleaned_time_frame} minutes")
+         
+         #update the preferences database with the most recent anchor time and the desired time frame
+         update_preferences(preference_data, cleaned_time_frame)
+         
+         #this will adjust the time fram in the database
+      else:
+         print("please enter a valid time frame")
+   else:
+      print("please enter a time frame")
+   
