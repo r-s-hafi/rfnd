@@ -37,7 +37,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    tag_id = tag_id.upper()
    try:
       #call plot data to collect tag data for queried tag and all other currently plotted tags
-      plot_html = generate_plots(con_data, tag_id, current_plots)
+      plot_html = generate_plots(con_data, preference_data, tag_id, current_plots)
    
    except Exception as e:
       return HTMLResponse(f"""

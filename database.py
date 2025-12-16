@@ -1,9 +1,10 @@
 from sqlite3 import Connection
+from matplotlib import _preprocess_data
 import pandas as pd
 from fastapi.responses import HTMLResponse
 import plotly.express as px
 import plotly.io as pio
-from datetime import datetime
+from datetime import datetime, timedelta
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -18,7 +19,6 @@ def initialize_db(con: Connection) -> None:
         with con:
             cur = con.cursor()
             res = cur.execute("SELECT * FROM process_data")
-            print(res.fetchall())
     
     except Exception as e:
         print(f"Unable to import data: {e}")
@@ -61,13 +61,26 @@ def update_preferences(con: Connection, time_frame: float) -> None:
         print(f"Unable to update user preferences: {e}")
 
 #plots data for given tag id and returns html
-def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLResponse:
+def generate_plots(con_data: Connection, preference_data: Connection, tag_id: str, current_plots: list) -> HTMLResponse:
     #initialize string to store html for all plots
     wrapped_html = ""
     stored_plot_html = ""
 
+    #get time frame from preferences
+    with preference_data:
+        cur = preference_data.cursor()
+        cur.execute("SELECT time_frame FROM preferences")
+        time_frame = cur.fetchone()[0]
+        cur.execute("SELECT anchor_time FROM preferences")
+        anchor_time = cur.fetchone()[0]
+
+    end_time = anchor_time
+    start_time = anchor_time - timedelta(minutes=time_frame)
+
     #generate html for queried tag id
-    df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data", con)
+    df = pd.read_sql(f"""SELECT Time, {tag_id}
+                    FROM process_data
+                    WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", (start_time, end_time), con_data)
     fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
 
     #configure the plot to be dark mode with better contrast
@@ -99,7 +112,7 @@ def generate_plots(con: Connection, tag_id: str, current_plots: list) -> HTMLRes
 
     #generate html for all tags currently plotted
     for stored_tags in current_plots:
-        df = pd.read_sql(f"SELECT Time, {stored_tags} FROM process_data", con)
+        df = pd.read_sql(f"SELECT Time, {stored_tags} FROM process_data", con_data)
         fig = px.line(df, x="Time", y=stored_tags, title=f"{stored_tags}", labels={'Time': 'Time', stored_tags: 'Value'})
         
         #configure the plot to be dark mode with better contrast

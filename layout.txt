@@ -38,11 +38,18 @@ Wrote fxn to read sql database for tag id and collect data
 Passed that data to plotly to create interactive charts
 Return plotly as HTML, regenerate all plots each time a tag is queried
 Used claude to generate flexbox css
+Added dare range changinf functionality
+Wrote script to add more datapoints to CSV
 
 
 Next steps:
-Add date range changing functionality
-Write program to generate CSV with more data
+Finish timeframe manipulation:
+    Skip forward
+    Backward
+    All the way to the present
+    All the way to the beginning
+Update generate_plots to take in the timeframe and the anchor point to show the correct timeframe
+
 Start adding analysis fxns
 
 
