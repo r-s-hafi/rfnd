@@ -42,8 +42,7 @@ def initialize_preferences(con: Connection) -> None:
             if not exists:
                 #set default time frame to 1 week and anchor time to current time
                 cur.execute("INSERT INTO preferences (time_frame, anchor_time) VALUES (?, ?)", 
-                           (60, datetime.now()))
-                con.commit()
+                           (60, datetime.now().replace(microsecond=0)))
 
 
     except Exception as e:
@@ -54,7 +53,7 @@ def update_preferences(con: Connection, time_frame: float) -> None:
         with con:
             cur = con.cursor()
             # Update all rows (should only be one row based on initialize_preferences)
-            cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, datetime.now()))
+            cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, datetime.now().replace(microsecond=0)))
             con.commit()
 
     except Exception as e:
@@ -74,47 +73,21 @@ def generate_plots(con_data: Connection, preference_data: Connection, tag_id: st
         cur.execute("SELECT anchor_time FROM preferences")
         anchor_time = cur.fetchone()[0]
 
-    end_time = anchor_time
-    start_time = anchor_time - timedelta(minutes=time_frame)
 
-    #generate html for queried tag id
-    df = pd.read_sql(f"""SELECT Time, {tag_id}
-                    FROM process_data
-                    WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", (start_time, end_time), con_data)
-    fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
+    print(f"Time frame: {time_frame}")
+    print(f"Anchor time: {anchor_time}")
 
-    #configure the plot to be dark mode with better contrast
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor='#1c2128',
-        plot_bgcolor='#0d1117',
-        font=dict(color='#c9d1d9', size=12),
-        title_font=dict(size=16, color='#e6edf3'),
-        xaxis=dict(
-            gridcolor='#30363d',
-            showgrid=True,
-            zeroline=False
-        ),
-        yaxis=dict(
-            gridcolor='#30363d',
-            showgrid=True,
-            zeroline=False
-        ),
-        margin=dict(l=60, r=40, t=60, b=50),
-        hovermode='x unified'
-    )
-    
-    # Make the line more visible
-    fig.update_traces(line=dict(width=2.5))
+    end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
+    start_time = end_time - timedelta(minutes=time_frame)
+    print(start_time)
 
-    plot_html = pio.to_html(fig, config={'responsive': True})     
-    wrapped_html += f'<div id="plot">{plot_html}</div>'
+    if tag_id != 'None':
+        #generate html for queried tag id
+        df = pd.read_sql(f"""SELECT Time, {tag_id}
+                        FROM process_data
+                        WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", con_data, params=(start_time, end_time))
+        fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
 
-    #generate html for all tags currently plotted
-    for stored_tags in current_plots:
-        df = pd.read_sql(f"SELECT Time, {stored_tags} FROM process_data", con_data)
-        fig = px.line(df, x="Time", y=stored_tags, title=f"{stored_tags}", labels={'Time': 'Time', stored_tags: 'Value'})
-        
         #configure the plot to be dark mode with better contrast
         fig.update_layout(
             template="plotly_dark",
@@ -139,7 +112,45 @@ def generate_plots(con_data: Connection, preference_data: Connection, tag_id: st
         # Make the line more visible
         fig.update_traces(line=dict(width=2.5))
 
-        stored_plot_html = pio.to_html(fig, config={'responsive': True})
-        wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+        plot_html = pio.to_html(fig, config={'responsive': True})     
+        wrapped_html += f'<div id="plot">{plot_html}</div>'
+
+    #generate html for all tags currently plotted
+    print(f"Current plots: {current_plots}")
+    for stored_tags in current_plots:
+
+        if stored_tags != tag_id:
+            df = pd.read_sql(f"""SELECT Time, {stored_tags}
+                    FROM process_data
+                    WHERE Time >= ? AND Time <= ? AND {stored_tags} IS NOT NULL""", con_data, params=(start_time, end_time))
+            fig = px.line(df, x="Time", y=stored_tags, title=f"{stored_tags}", labels={'Time': 'Time', stored_tags: 'Value'})
+            
+            #configure the plot to be dark mode with better contrast
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor='#1c2128',
+                plot_bgcolor='#0d1117',
+                font=dict(color='#c9d1d9', size=12),
+                title_font=dict(size=16, color='#e6edf3'),
+                xaxis=dict(
+                    gridcolor='#30363d',
+                    showgrid=True,
+                    zeroline=False
+                ),
+                yaxis=dict(
+                    gridcolor='#30363d',
+                    showgrid=True,
+                    zeroline=False
+                ),
+                margin=dict(l=60, r=40, t=60, b=50),
+                hovermode='x unified'
+            )
+            
+            # Make the line more visible
+            fig.update_traces(line=dict(width=2.5))
+
+            stored_plot_html = pio.to_html(fig, config={'responsive': True})
+            wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
 
     return wrapped_html
+

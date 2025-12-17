@@ -14,7 +14,7 @@ def generate_process_data(num_minutes: int) -> None:
         row_entry = []
         #add the data rows
         for i in range(num_minutes):
-            time = datetime.now() - timedelta(minutes=i)
+            time = datetime.now().replace(microsecond=0) - timedelta(minutes=i)
             value_TI001 = random.randint(900, 1005)
             value_PI001 = random.randint(90, 150)
             row_entry.append(time)

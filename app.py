@@ -4,7 +4,7 @@ from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import sqlite3
-
+from datetime import datetime
 
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences
 from datamanipulation import detect_time_frame
@@ -44,9 +44,9 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                         <h1>Error plotting data for tag {tag_id}</h1>
                         <p>{e}</p>
                         """)
-   
+   #just using this line for testing purposes
    current_plots.clear()
-   
+
    #check for repeat plots
    if tag_id in current_plots:
       print(f"Plot already exists for tag {tag_id}")
@@ -70,7 +70,7 @@ async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLR
          
          #update the preferences database with the most recent anchor time and the desired time frame
          update_preferences(preference_data, cleaned_time_frame)
-         
+
          #this will adjust the time fram in the database
       else:
          print("please enter a valid time frame")
