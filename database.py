@@ -60,7 +60,7 @@ def update_preferences(con: Connection, time_frame: float) -> None:
         print(f"Unable to update user preferences: {e}")
 
 #plots data for given tag id and returns html
-def generate_plots(con_data: Connection, preference_data: Connection, tag_id: str, current_plots: list) -> HTMLResponse:
+def generate_plots(con_data: Connection, preference_data: Connection, current_plots: list) -> HTMLResponse:
     #initialize string to store html for all plots
     wrapped_html = ""
     stored_plot_html = ""
@@ -81,13 +81,13 @@ def generate_plots(con_data: Connection, preference_data: Connection, tag_id: st
     start_time = end_time - timedelta(minutes=time_frame)
     print(start_time)
 
-    if tag_id != 'None':
-        #generate html for queried tag id
+    for tag_id in current_plots:
+
         df = pd.read_sql(f"""SELECT Time, {tag_id}
                         FROM process_data
                         WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", con_data, params=(start_time, end_time))
         fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
-
+            
         #configure the plot to be dark mode with better contrast
         fig.update_layout(
             template="plotly_dark",
@@ -108,49 +108,8 @@ def generate_plots(con_data: Connection, preference_data: Connection, tag_id: st
             margin=dict(l=60, r=40, t=60, b=50),
             hovermode='x unified'
         )
-        
-        # Make the line more visible
-        fig.update_traces(line=dict(width=2.5))
-
-        plot_html = pio.to_html(fig, config={'responsive': True})     
-        wrapped_html += f'<div id="plot">{plot_html}</div>'
-
-    #generate html for all tags currently plotted
-    print(f"Current plots: {current_plots}")
-    for stored_tags in current_plots:
-
-        if stored_tags != tag_id:
-            df = pd.read_sql(f"""SELECT Time, {stored_tags}
-                    FROM process_data
-                    WHERE Time >= ? AND Time <= ? AND {stored_tags} IS NOT NULL""", con_data, params=(start_time, end_time))
-            fig = px.line(df, x="Time", y=stored_tags, title=f"{stored_tags}", labels={'Time': 'Time', stored_tags: 'Value'})
-            
-            #configure the plot to be dark mode with better contrast
-            fig.update_layout(
-                template="plotly_dark",
-                paper_bgcolor='#1c2128',
-                plot_bgcolor='#0d1117',
-                font=dict(color='#c9d1d9', size=12),
-                title_font=dict(size=16, color='#e6edf3'),
-                xaxis=dict(
-                    gridcolor='#30363d',
-                    showgrid=True,
-                    zeroline=False
-                ),
-                yaxis=dict(
-                    gridcolor='#30363d',
-                    showgrid=True,
-                    zeroline=False
-                ),
-                margin=dict(l=60, r=40, t=60, b=50),
-                hovermode='x unified'
-            )
-            
-            # Make the line more visible
-            fig.update_traces(line=dict(width=2.5))
-
-            stored_plot_html = pio.to_html(fig, config={'responsive': True})
-            wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+        stored_plot_html = pio.to_html(fig, config={'responsive': True})
+        wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
 
     return wrapped_html
 

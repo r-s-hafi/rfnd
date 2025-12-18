@@ -35,17 +35,6 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
    global plot_count, current_plots
    tag_id = tag_id.upper()
-   try:
-      #call plot data to collect tag data for queried tag and all other currently plotted tags
-      plot_html = generate_plots(con_data, preference_data, tag_id, current_plots)
-   
-   except Exception as e:
-      return HTMLResponse(f"""
-                        <h1>Error plotting data for tag {tag_id}</h1>
-                        <p>{e}</p>
-                        """)
-   #just using this line for testing purposes
-   current_plots.clear()
 
    #check for repeat plots
    if tag_id in current_plots:
@@ -55,11 +44,23 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
       #if try block runs, add plot count to html response
       current_plots.append(tag_id)
       plot_count += 1
-      return HTMLResponse(f"""
+
+      try:
+         #call plot data to collect tag data for queried tag and all other currently plotted tags
+         plot_html = generate_plots(con_data, preference_data, current_plots)
+         return HTMLResponse(f"""
                         <div id="plot-area" hx-swap-oob="true"">
                            {plot_html}
                         </div>
                         """)
+      
+      except Exception as e:
+         return HTMLResponse(f"""
+                        <h1>Error plotting data for tag {tag_id}</h1>
+                        <p>{e}</p>
+                        """)
+
+   
 
 @app.post("/update-time-frame")
 async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLResponse:
