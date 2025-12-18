@@ -60,14 +60,14 @@ def update_preferences(con: Connection, time_frame: float) -> None:
         print(f"Unable to update user preferences: {e}")
 
 #plots data for given tag id and returns html
-def generate_plots(con_data: Connection, preference_data: Connection, current_plots: list) -> HTMLResponse:
+def generate_plots(con_data: Connection, con_preferences: Connection, current_plots: list) -> HTMLResponse:
     #initialize string to store html for all plots
     wrapped_html = ""
     stored_plot_html = ""
 
     #get time frame from preferences
-    with preference_data:
-        cur = preference_data.cursor()
+    with con_preferences:
+        cur = con_preferences.cursor()
         cur.execute("SELECT time_frame FROM preferences")
         time_frame = cur.fetchone()[0]
         cur.execute("SELECT anchor_time FROM preferences")
@@ -79,7 +79,6 @@ def generate_plots(con_data: Connection, preference_data: Connection, current_pl
 
     end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
     start_time = end_time - timedelta(minutes=time_frame)
-    print(start_time)
 
     for tag_id in current_plots:
 

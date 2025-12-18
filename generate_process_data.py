@@ -24,4 +24,4 @@ def generate_process_data(num_minutes: int) -> None:
             row_entry.clear()
 
 
-generate_process_data(1000)
+generate_process_data(100000)
