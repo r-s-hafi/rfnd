@@ -6,8 +6,8 @@ from fastapi.staticfiles import StaticFiles
 import sqlite3
 from datetime import datetime
 
-from database import initialize_db, generate_plots, initialize_preferences, update_preferences
-from datamanipulation import detect_time_frame
+from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time
+from datamanipulation import detect_time_frame 
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
@@ -65,7 +65,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    
 
 @app.post("/update-time-frame")
-async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLResponse:
+async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
    if time_frame:
       cleaned_time_frame = detect_time_frame(time_frame)
       if cleaned_time_frame:
@@ -75,7 +75,7 @@ async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLR
          update_preferences(con_preferences, cleaned_time_frame)
          print(f"Current plots: {current_plots}")
          try:
-            #call plot data to collect tag data for queried tag and all other currently plotted tags
+            #call plot data to collect tag data for all currently plotted tags
             plot_html = generate_plots(con_data, con_preferences, current_plots)
             return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
@@ -94,4 +94,21 @@ async def update_time_frame(request: Request, time_frame: str = Form()) -> HTMLR
          print("please enter a valid time frame")
    else:
       print("please enter a time frame")
-   
+
+@app.post("/go-past")
+async def go_past() -> HTMLResponse:
+   update_anchor_time(con_data, con_preferences, "go_back")
+   try:
+      #call plot data to collect tag data for all currently plotted tags
+      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      return HTMLResponse(f"""
+                           <div id="plot-area" hx-swap-oob="true"">
+                              {plot_html}
+                           </div>
+                           """)
+      
+   except Exception as e:
+      return HTMLResponse(f"""
+                           <h1>Error going to past</h1>
+                           <p>{e}</p>
+                           """)

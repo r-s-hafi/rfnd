@@ -112,3 +112,17 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
 
     return wrapped_html
 
+def update_anchor_time(con_data: Connection, con_preferences: Connection, operation: str) -> None: 
+    if operation == "go_back":
+        try:
+            with con_data:
+                cur = con_data.cursor()
+                #find the oldest entry in the process data database
+                cur.execute("""SELECT MIN(Time)
+                            FROM process_data
+                """)
+            test = cur.fetchone()
+            anchor_time = cur.fetchone()[0]
+            #ended here
+        except Exception as e:
+            print(f"Unable to find oldest database entry: {e}")
