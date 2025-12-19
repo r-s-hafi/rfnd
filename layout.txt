@@ -40,14 +40,15 @@ Return plotly as HTML, regenerate all plots each time a tag is queried
 Used claude to generate flexbox css
 Added dare range changinf functionality
 Wrote script to add more datapoints to CSV
+Made all of the time manipulation buttons call their own endpoints
+Added functionality for buttons to skip to present and oldest points in the data.csv file
 
 
 Next steps:
 Finish timeframe manipulation:
     Skip forward
     Backward
-    All the way to the present
-    All the way to the beginning
+    
 Update generate_plots to take in the timeframe and the anchor point to show the correct timeframe
 
 Start adding analysis fxns

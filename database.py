@@ -112,17 +112,69 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
 
     return wrapped_html
 
-def update_anchor_time(con_data: Connection, con_preferences: Connection, operation: str) -> None: 
+def update_anchor_time(con_data: Connection, con_preferences: Connection, operation: str) -> None:
+    #update the anchor time to be the oldest point + current time frame
     if operation == "go_back":
         try:
             with con_data:
                 cur = con_data.cursor()
+
                 #find the oldest entry in the process data database
                 cur.execute("""SELECT MIN(Time)
                             FROM process_data
                 """)
-            test = cur.fetchone()
-            anchor_time = cur.fetchone()[0]
-            #ended here
+            first_point = cur.fetchone()[0]
+            first_point = datetime.strptime(first_point, "%Y-%m-%d %H:%M:%S")
+            
+            #update anchor point to be the oldest point + the current timeframe
+            with con_preferences:
+                cur = con_preferences.cursor()
+                cur.execute("SELECT * FROM preferences where time_frame is not null")
+                time_frame = cur.fetchone()[0]
+
+                #make the new anchor point the oldest point in the database + the current time frame
+                print(f'this is the first point {first_point}')
+                print(f'this is the timedelta: {timedelta(minutes=time_frame)}')
+                new_anchor = first_point + timedelta(minutes=time_frame)
+                print(f'this is the new anchor: {new_anchor}')
+
+                #update database with the new anchor point
+                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+                
+        except Exception as e:
+            print(f"Unable to find oldest database entry: {e}")
+
+    #update the anchor time to be the present time
+
+    #this function is tricky when using CSV data as a placeholder like I am
+    #in production this would just use datetime.now() as the new anchor time because the database should be constantly updating
+    #but in CSV format when the data is updated intermittently, we will need to read the most recent data point and use that as our anchor point
+    if operation == "go_present":
+        try:
+            with con_data:
+                cur = con_data.cursor()
+
+                #find the newest/most recent entry in the process data database
+                cur.execute("""SELECT MAX(Time)
+                            FROM process_data
+                """)
+            most_recent_point = cur.fetchone()[0]
+            most_recent_point = datetime.strptime(most_recent_point, "%Y-%m-%d %H:%M:%S")
+            
+            #update anchor point to be the oldest point + the current timeframe
+            with con_preferences:
+                cur = con_preferences.cursor()
+                cur.execute("SELECT * FROM preferences where time_frame is not null")
+                time_frame = cur.fetchone()[0]
+
+                #make the new anchor point the most recent point in the database
+                print(f'this is the most recent point {most_recent_point}')
+                print(f'this is the timedelta: {timedelta(minutes=time_frame)}')
+                new_anchor = most_recent_point
+                print(f'this is the new anchor: {new_anchor}')
+
+                #update database with the new anchor point
+                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+ 
         except Exception as e:
             print(f"Unable to find oldest database entry: {e}")

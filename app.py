@@ -112,3 +112,21 @@ async def go_past() -> HTMLResponse:
                            <h1>Error going to past</h1>
                            <p>{e}</p>
                            """)
+
+@app.post("/go-present")
+async def go_past() -> HTMLResponse:
+   update_anchor_time(con_data, con_preferences, "go_present")
+   try:
+      #call plot data to collect tag data for all currently plotted tags
+      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      return HTMLResponse(f"""
+                           <div id="plot-area" hx-swap-oob="true"">
+                              {plot_html}
+                           </div>
+                           """)
+      
+   except Exception as e:
+      return HTMLResponse(f"""
+                           <h1>Error going to past</h1>
+                           <p>{e}</p>
+                           """)
