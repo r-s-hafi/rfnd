@@ -97,6 +97,24 @@ async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
 
 @app.post("/go-past")
 async def go_past() -> HTMLResponse:
+   update_anchor_time(con_data, con_preferences, "go_past")
+   try:
+      #call plot data to collect tag data for all currently plotted tags
+      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      return HTMLResponse(f"""
+                           <div id="plot-area" hx-swap-oob="true"">
+                              {plot_html}
+                           </div>
+                           """)
+      
+   except Exception as e:
+      return HTMLResponse(f"""
+                           <h1>Error going to past</h1>
+                           <p>{e}</p>
+                           """)
+
+@app.post("/go-back")
+async def go_back() -> HTMLResponse:
    update_anchor_time(con_data, con_preferences, "go_back")
    try:
       #call plot data to collect tag data for all currently plotted tags
@@ -112,6 +130,25 @@ async def go_past() -> HTMLResponse:
                            <h1>Error going to past</h1>
                            <p>{e}</p>
                            """)
+
+@app.post("/go-forward")
+async def go_back() -> HTMLResponse:
+   update_anchor_time(con_data, con_preferences, "go_forward")
+   try:
+      #call plot data to collect tag data for all currently plotted tags
+      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      return HTMLResponse(f"""
+                           <div id="plot-area" hx-swap-oob="true"">
+                              {plot_html}
+                           </div>
+                           """)
+      
+   except Exception as e:
+      return HTMLResponse(f"""
+                           <h1>Error going to past</h1>
+                           <p>{e}</p>
+                           """)
+
 
 @app.post("/go-present")
 async def go_past() -> HTMLResponse:
@@ -130,3 +167,4 @@ async def go_past() -> HTMLResponse:
                            <h1>Error going to past</h1>
                            <p>{e}</p>
                            """)
+
