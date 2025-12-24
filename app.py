@@ -54,15 +54,18 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                      <div id="plot-area" hx-swap-oob="true"">
                         {plot_html}
                      </div>
+                     <div id="current-tags-list" hx-swap-oob="true"">
+                        <ul>
+                           {''.join(f'<button id="{tag_id}">{tag_id}</button>' for tag_id in current_plots)}
+                        </ul>
+                     </div>
                      """)
       
    except Exception as e:
       return HTMLResponse(f"""
-                     <h1>Error plotting data for tag {tag_id}</h1>
-                     <p>{e}</p>
-                     """)
-
-   
+                           <h1>Error plotting data for tag {tag_id}</h1>
+                           <p>{e}</p>
+                           """)
 
 @app.post("/update-time-frame")
 async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
