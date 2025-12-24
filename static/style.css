@@ -1,7 +1,7 @@
 /* claude css */
 /* Body and general styling */
 body {
-    margin: 0;
+    margin: 0;  
     padding: 0;
     background-color: #0d1117;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -17,11 +17,18 @@ h1 {
 }
 
 /* Form styling */
-#get-tag-id, #time-frame-selector, #forumla-window {
+#get-tag-id, #time-frame-selector, #formula-window {
     padding: 20px;
     text-align: center;
     background-color: #161b22;
     border-bottom: 1px solid #30363d;
+}
+
+#formula-window, #current-tags, #about-formulas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 
@@ -101,3 +108,13 @@ h1 {
 }
 
 /* claude css ^^^*/
+
+#formula-docs-about {
+    margin: 20px;
+    padding: 20px;
+    background-color: #161b22;
+}
+
+#formula-docs-list {
+    color: #2ea043;
+}

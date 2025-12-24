@@ -22,6 +22,7 @@ plot_count = 0
 #list of tags currently plotted
 current_plots = []
 
+#initializes database and global variables
 @app.get("/")
 async def initialize(request: Request) -> HTMLResponse:
    #initialize database and populate with the data from the csv\
@@ -32,6 +33,13 @@ async def initialize(request: Request) -> HTMLResponse:
    #return homepage "index.html"
    return templates.TemplateResponse(request, "index.html")
 
+#renders the formula documentation page
+@app.get("/formula_docs")
+async def formula_docs(request: Request) -> HTMLResponse:
+   #return formula documentation page
+   return templates.TemplateResponse(request, "formula_docs.html")
+
+#accepts the tag ID from the user and re-generates all plots in current session
 @app.post("/get-tag-id")
 async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
@@ -54,9 +62,9 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                      <div id="plot-area" hx-swap-oob="true"">
                         {plot_html}
                      </div>
-                     <div id="current-tags-list" hx-swap-oob="true"">
+                     <div id="current-tags-list" hx-swap-oob="true">
                         <ul>
-                           {''.join(f'<button id="{tag_id}">{tag_id}</button>' for tag_id in current_plots)}
+                           {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
                         </ul>
                      </div>
                      """)
@@ -67,6 +75,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                            <p>{e}</p>
                            """)
 
+#updates the time frame for the current session
 @app.post("/update-time-frame")
 async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
    if time_frame:
@@ -98,6 +107,7 @@ async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
    else:
       print("please enter a time frame")
 
+#moves the anchor time as far baack as possible given the current time frame
 @app.post("/go-past")
 async def go_past() -> HTMLResponse:
    update_anchor_time(con_data, con_preferences, "go_past")
@@ -116,6 +126,7 @@ async def go_past() -> HTMLResponse:
                            <p>{e}</p>
                            """)
 
+#moves the anchor time backwards by the current time frame
 @app.post("/go-back")
 async def go_back() -> HTMLResponse:
    update_anchor_time(con_data, con_preferences, "go_back")
@@ -134,6 +145,7 @@ async def go_back() -> HTMLResponse:
                            <p>{e}</p>
                            """)
 
+#moves the anchor time forwards by the current time frame
 @app.post("/go-forward")
 async def go_back() -> HTMLResponse:
    update_anchor_time(con_data, con_preferences, "go_forward")
@@ -152,7 +164,7 @@ async def go_back() -> HTMLResponse:
                            <p>{e}</p>
                            """)
 
-
+#moves the anchor time to the present time
 @app.post("/go-present")
 async def go_past() -> HTMLResponse:
    update_anchor_time(con_data, con_preferences, "go_present")
@@ -170,4 +182,23 @@ async def go_past() -> HTMLResponse:
                            <h1>Error going to past</h1>
                            <p>{e}</p>
                            """)
+
+#insert tag into formula
+@app.post("/insert-tag-into-formula")
+async def insert_tag_into_formula(tag_id: str = Form(), operation: str = Form(default="")) -> HTMLResponse:
+   new_formula = operation + tag_id
+   return HTMLResponse(f"""
+                           <div id="formula-input-container" hx-swap-oob="true">
+                              <form id="formula-form" hx-trigger="submit" hx-target="#plot-area">
+                                 <input type="text" id="formula-input" name="operation" class="input" placeholder="Enter formula" value="{new_formula}">
+                              </form>
+                           </div>
+
+                           <div id="current-tags-list" hx-swap-oob="true">
+                              <ul>
+                                 {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                              </ul>
+                           </div>
+                        """)
+
 

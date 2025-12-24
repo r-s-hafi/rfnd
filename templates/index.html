@@ -9,7 +9,7 @@
     </script>
     <!-- htmx library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <title>REFINED</title>
+    <title>rfnd</title>
 </head>
 <body>
     <h1>Welcome to rfnd Industrial Analytics</h1>
@@ -31,14 +31,19 @@
         </form>
     </div>
 
-    <div id="forumla-window">
+    <div id="formula-window">
+        <div id="formula-input-container">
+            <form id="formula-form" hx-trigger="submit" hx-target="#plot-area">
+                <input id="formula-input" type="text" name="operation" class="input" placeholder="Enter formula">
+            </form>
+        </div>
         <div id="current-tags">
             <ul id="current-tags-list">
             </ul>
         </div>
-        <form hx-trigger="submit" hx-target="#plot-area">
-            <input type="text" name="operation" class="input" placeholder="Enter formula">
-        </form>
+        <div id="about-formulas">
+            <a href="/formula_docs" class="button">About Formulas</a>
+        </div>
     </div>
 
     <div id="time-frame-area">
