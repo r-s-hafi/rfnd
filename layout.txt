@@ -42,15 +42,10 @@ Added dare range changinf functionality
 Wrote script to add more datapoints to CSV
 Made all of the time manipulation buttons call their own endpoints
 Added functionality for buttons to skip to present and oldest points in the data.csv file
+Added functionality for buttons to skip forward and backward by current timeframe, handled out of bounds edge cases
 
 
 Next steps:
-Finish timeframe manipulation:
-    Skip forward
-    Backward
-    
-Update generate_plots to take in the timeframe and the anchor point to show the correct timeframe
-
 Start adding analysis fxns
 
 
