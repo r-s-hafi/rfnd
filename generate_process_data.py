@@ -11,12 +11,23 @@ def generate_process_data(num_minutes: int) -> None:
         #add the headers row
         writer.writerow(tags)
         
+        value_TI001 = 995
+        value_PI001 = 120
+        rands = [1, 2]
         row_entry = []
         #add the data rows
         for i in range(num_minutes):
             time = datetime.now().replace(microsecond=0) - timedelta(minutes=i)
-            value_TI001 = random.randint(900, 1005)
-            value_PI001 = random.randint(90, 150)
+
+            num = random.choice(rands)
+
+            if num == 1:
+                value_TI001 -= 0.1
+                value_PI001 += 0.1
+            else:
+                value_TI001 += 0.1
+                value_PI001 -= 0.1
+            
             row_entry.append(time)
             row_entry.append(value_TI001)
             row_entry.append(value_PI001)
