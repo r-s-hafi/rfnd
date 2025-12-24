@@ -47,20 +47,20 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
       current_plots.append(tag_id)
       plot_count += 1
 
-      try:
-         #call plot data to collect tag data for queried tag and all other currently plotted tags
-         plot_html = generate_plots(con_data, con_preferences, current_plots)
-         return HTMLResponse(f"""
-                        <div id="plot-area" hx-swap-oob="true"">
-                           {plot_html}
-                        </div>
-                        """)
+   try:
+      #call plot data to collect tag data for queried tag and all other currently plotted tags
+      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      return HTMLResponse(f"""
+                     <div id="plot-area" hx-swap-oob="true"">
+                        {plot_html}
+                     </div>
+                     """)
       
-      except Exception as e:
-         return HTMLResponse(f"""
-                        <h1>Error plotting data for tag {tag_id}</h1>
-                        <p>{e}</p>
-                        """)
+   except Exception as e:
+      return HTMLResponse(f"""
+                     <h1>Error plotting data for tag {tag_id}</h1>
+                     <p>{e}</p>
+                     """)
 
    
 
