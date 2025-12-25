@@ -56,6 +56,8 @@ def detect_time_frame(time_frame: str) -> float:
     return None, None
     
 
+#operation functions
+
     
     
         
