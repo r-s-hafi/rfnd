@@ -46,6 +46,10 @@ Added functionality for buttons to skip forward and backward by current timefram
 
 
 Next steps:
-Start adding analysis fxns
+Start DSL parsing
+Add DSL operation functions
+    Start with:
+        Addition, subtraction, *, /
+        Derivative
 
 
