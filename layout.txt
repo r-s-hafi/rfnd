@@ -43,13 +43,10 @@ Wrote script to add more datapoints to CSV
 Made all of the time manipulation buttons call their own endpoints
 Added functionality for buttons to skip to present and oldest points in the data.csv file
 Added functionality for buttons to skip forward and backward by current timeframe, handled out of bounds edge cases
-
+Built lark grammar and class
 
 Next steps:
-Start DSL parsing
-Add DSL operation functions
-    Start with:
-        Addition, subtraction, *, /
-        Derivative
+Build lark methods and integrate pandas to perform analyses on tag dataframes
+Add edge case handling (numbers, tags where they aren't supposed to be)
 
 

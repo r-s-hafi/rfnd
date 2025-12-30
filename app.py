@@ -8,6 +8,7 @@ from datetime import datetime
 
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time
 from datamanipulation import detect_time_frame 
+from formula_parse import parse_formula
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
@@ -200,5 +201,10 @@ async def insert_tag_into_formula(tag_id: str = Form(), operation: str = Form(de
                               </ul>
                            </div>
                         """)
+
+#execute formula by pasing and running appropriate operations functions
+@app.post("/execute-formula")
+async def execute_formula(formula: str = Form()) -> HTMLResponse:
+   tags, operations = parse_formula(formula)
 
 
