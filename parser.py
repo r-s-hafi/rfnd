@@ -1,22 +1,9 @@
-####PARSER 101#####
-
-# 1. Define grammar
-# 2. Create parser instance
-# 3. Run input thrui parser which gives a tree representation of input
-# 4. Process tree
-
 from lark import Lark, Transformer
+import pandas as pd
+from database import get_df
+import sqlite3
 
-class SumTransform(Transformer):
-
-    def addend(self, intList):
-        return int(intList[0])
-
-    #parent method always gets the children's return values as a list
-    def sum(self, leftRight):
-        return leftRight[0] + leftRight[1]
-
-expression = '45 + 33'
+con_data = sqlite3.connect("process_data.db")
 
 #start the parsing at expression
 #expression is any term + or - any other term n(*) times
@@ -34,7 +21,7 @@ expression = '45 + 33'
 #import whitespace definition
 #ignore it
 
-grammar = """
+grammar = r"""
 start: expression
 expression: term ((ADD | SUBTRACT) term)*
 term: factor ((MULTIPLY | DIVIDE) factor)*
@@ -43,7 +30,7 @@ factor: NUMBER
         | function
         | "(" expression ")"
 
-function: IDENTIFIER "(" expression ("," expression)* ")"
+function: OPERATION "(" expression ("," expression)* ")"
 
 ADD: "+"
 SUBTRACT: "-"
@@ -60,18 +47,23 @@ NUMBER: /[0-9]+(\.[0-9]+)?/
 
 #create the formula transformer class
 class FormulaTransformer(Transformer):
-    #initialize the class with list of tags and their datapoints
-    def __init__(self, tags):
-        self.tags = tags
+    #initialize the class, store the tags in a dictionary
+    def __init__(self):
+        pass
+
+    #when parser encounters the start node, return the expression result
+    def start(self, args):
+        return args[0]
 
     #every time the parser encounters a number token, return the number as a float (parser returns strings only)
-    def NUMBER(self, token):
+    def NUMBER(self, token) -> float:
         return float(token)
     
-    #everyt time the parser encounters a tag ID, return it as a string
-    def TAG_ID(self, token):
-        return str(token)
-
+    #everyt time the parser encounters a tag ID, return the df object for that tag
+    def TAG_ID(self, token) -> pd.DataFrame:
+        tag_df = get_df(con_data, str(token))
+        return tag_df
+    
     #every time the parser encounters a factor node, return the factor
     def factor(self, args):
         return args[0]
@@ -96,7 +88,7 @@ class FormulaTransformer(Transformer):
             
             #index i by 2 to move along to the next operator and signal to the right of it
             i += 2
-            return result
+        return result
 
     #when parser encounters an expression node, perform expression operation
     #similar logic to term method
@@ -112,20 +104,20 @@ class FormulaTransformer(Transformer):
             if operator.type == 'ADD':
                 result = result + right
             elif operator.type == 'SUBTRACT':
-                result = result / right
+                result = result - right
             
             #index i by 2 to move along to the next operator and signal to the right of it
             i += 2
-            return result
+        return result
     
     #when parser encounters a function node, perform function operation
     #example input -> args = [Token(IDENTIFIER, 'max'), <Signal object for PI001>, <Signal object for TI042>]
     def function(self, args):
-        func_name = args[0]
+        func_name = str(args[0])
         func_args = args[1:]
 
         if func_name == 'derivative':
-            pass
+            print('hi')
         
         elif func_name == 'avg':
             pass
@@ -137,11 +129,11 @@ class FormulaTransformer(Transformer):
             return(f'Unknown function: {func_name}')
 
 
-    
-    
+parser = Lark(grammar, start='start')
 
+def parse_formula(expression: str) -> str:
+    tree = parser.parse(expression)
+    answer = FormulaTransformer().transform(tree)
+    print(f'The answer is: {answer}')
 
-# parser = Lark(grammar, start='sum')
-# tree = parser.parse(expression)
-# answer = SumTransform().transform(tree)
-# print(answer)
+parse_formula('derivative(PI001)')

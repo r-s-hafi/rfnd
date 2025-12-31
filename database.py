@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 import plotly.express as px
 import plotly.io as pio
 from datetime import datetime, timedelta
+import re
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -59,56 +60,75 @@ def update_preferences(con: Connection, time_frame: float) -> None:
     except Exception as e:
         print(f"Unable to update user preferences: {e}")
 
+#return df object for given tag id
+def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
+    try:
+        #tag_id should match pattern (2 uppercase letters + 3 digits)
+        #helps prevent SQL injection
+        if not re.match(r'^[A-Z]{2}[0-9]{3}$', tag_id):
+            print(f"Invalid tag_id format: {tag_id}")
+        
+        #pd.read_sql to get a DataFrame directly
+        #select Time and the tag_id column, filter where tag_id is not NULL
+        df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
+        print(f"this is the df: {df}")
+        return df
+    except Exception as e:
+        print(f"Unable to get df object for tag id: {e}")
+
+
 #plots data for given tag id and returns html
 def generate_plots(con_data: Connection, con_preferences: Connection, current_plots: list) -> HTMLResponse:
     #initialize string to store html for all plots
     wrapped_html = ""
     stored_plot_html = ""
 
-    #get time frame from preferences
-    with con_preferences:
-        cur = con_preferences.cursor()
-        cur.execute("SELECT time_frame FROM preferences")
-        time_frame = cur.fetchone()[0]
-        cur.execute("SELECT anchor_time FROM preferences")
-        anchor_time = cur.fetchone()[0]
+    try:#get time frame from preferences
+        with con_preferences:
+            cur = con_preferences.cursor()
+            cur.execute("SELECT time_frame FROM preferences")
+            time_frame = cur.fetchone()[0]
+            cur.execute("SELECT anchor_time FROM preferences")
+            anchor_time = cur.fetchone()[0]
 
 
-    print(f"Time frame: {time_frame}")
-    print(f"Anchor time: {anchor_time}")
+        print(f"Time frame: {time_frame}")
+        print(f"Anchor time: {anchor_time}")
 
-    end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
-    start_time = end_time - timedelta(minutes=time_frame)
+        end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
+        start_time = end_time - timedelta(minutes=time_frame)
 
-    for tag_id in current_plots:
+        for tag_id in current_plots:
 
-        df = pd.read_sql(f"""SELECT Time, {tag_id}
-                        FROM process_data
-                        WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", con_data, params=(start_time, end_time))
-        fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
-            
-        #configure the plot to be dark mode with better contrast
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor='#1c2128',
-            plot_bgcolor='#0d1117',
-            font=dict(color='#c9d1d9', size=12),
-            title_font=dict(size=16, color='#e6edf3'),
-            xaxis=dict(
-                gridcolor='#30363d',
-                showgrid=True,
-                zeroline=False
-            ),
-            yaxis=dict(
-                gridcolor='#30363d',
-                showgrid=True,
-                zeroline=False
-            ),
-            margin=dict(l=60, r=40, t=60, b=50),
-            hovermode='x unified'
-        )
-        stored_plot_html = pio.to_html(fig, config={'responsive': True})
-        wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+            df = pd.read_sql(f"""SELECT Time, {tag_id}
+                            FROM process_data
+                            WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", con_data, params=(start_time, end_time))
+            fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
+                
+            #configure the plot to be dark mode with better contrast
+            fig.update_layout(
+                template="plotly_dark",
+                paper_bgcolor='#1c2128',
+                plot_bgcolor='#0d1117',
+                font=dict(color='#c9d1d9', size=12),
+                title_font=dict(size=16, color='#e6edf3'),
+                xaxis=dict(
+                    gridcolor='#30363d',
+                    showgrid=True,
+                    zeroline=False
+                ),
+                yaxis=dict(
+                    gridcolor='#30363d',
+                    showgrid=True,
+                    zeroline=False
+                ),
+                margin=dict(l=60, r=40, t=60, b=50),
+                hovermode='x unified'
+            )
+            stored_plot_html = pio.to_html(fig, config={'responsive': True})
+            wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+    except Exception as e:
+        print(f"Unable to generate plots: {e}")
 
     return wrapped_html
 

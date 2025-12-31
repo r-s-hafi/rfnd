@@ -44,9 +44,12 @@ Made all of the time manipulation buttons call their own endpoints
 Added functionality for buttons to skip to present and oldest points in the data.csv file
 Added functionality for buttons to skip forward and backward by current timeframe, handled out of bounds edge cases
 Built lark grammar and class
+Made get_df function to grab df object of existing tags needed to execute formulas to create new tags
 
 Next steps:
-Build lark methods and integrate pandas to perform analyses on tag dataframes
-Add edge case handling (numbers, tags where they aren't supposed to be)
+Hook up parser df output to database and store new tag that user creates
+    Use generate_plots to plot new tag
+    Edge cases/polish grammar
+
 
 
