@@ -2,6 +2,7 @@ from lark import Lark, Transformer
 import pandas as pd
 from database import get_df
 import sqlite3
+import numpy as np
 
 con_data = sqlite3.connect("process_data.db")
 
@@ -83,11 +84,40 @@ class FormulaTransformer(Transformer):
             operator = args[i]
             right = args[i + 1]
 
-            if operator.type == 'MULTIPLY':
-                     result = result * right
-            elif operator.type == 'DIVIDE':
-                     result = result / right
+            #perform operations on two dataframes
+            if isinstance(result, pd.DataFrame) and isinstance(right, pd.DataFrame):
+                for column in result.columns:
+                    if column != 'Time':
+                        if operator.type == 'MULTIPLY':
+                            result[column] = result[column] * right[column]
+                        elif operator.type == 'DIVIDE':
+                            result[column] = result[column] / right[column]
+
+            #perform operations on a dataframe and a constant
+            elif isinstance(result, pd.DataFrame):
+                for column in result.columns:
+                    if column != 'Time':
+                        if operator.type == 'MULTIPLY':
+                            result[column] = result[column] * right
+                        elif operator.type == 'DIVIDE':
+                            result[column] = result[column] / right
             
+            #perform operations on a constant and a dataframe
+            elif isinstance(right, pd.DataFrame):
+                for column in right.columns:
+                    if column != 'Time':
+                        if operator.type == 'MULTIPLY':
+                            right[column] = right[column] * result
+                        elif operator.type == 'DIVIDE':
+                            right[column] = right[column] / result
+            
+            #perform operations on two constants
+            else:
+                if operator.type == 'MULTIPLY':
+                    result = result * right
+                elif operator.type == 'DIVIDE':
+                    result = result / right
+
             #index i by 2 to move along to the next operator and signal to the right of it
             i += 2
         return result
@@ -138,4 +168,11 @@ def parse_formula(expression: str) -> str:
     answer = FormulaTransformer().transform(tree)
     print(f'The answer is: {answer}')
 
-#parse_formula("derivative(PI001)")
+parse_formula("PI001 / 2")
+
+
+#5:30am wake up
+#6:00 get to gym
+#7:15 leave work
+#7:30am get home
+#8am start work

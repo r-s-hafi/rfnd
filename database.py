@@ -70,7 +70,7 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
         
         #pd.read_sql to get a DataFrame directly
         #select Time and the tag_id column, filter where tag_id is not NULL
-        df = pd.read_sql(f"SELECT {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
+        df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
         return df
         
     except Exception as e:
