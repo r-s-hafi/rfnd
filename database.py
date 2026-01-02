@@ -13,7 +13,7 @@ def initialize_db(con: Connection) -> None:
         #read the data.csv file into a pandas dataframe
         df = pd.read_csv("data.csv")
 
-        #insert the data into the database
+        #insert the data into the database (to_sql will create the table if it doesn't exist)
         df.to_sql("process_data", con, if_exists="replace", index=False)
 
         #print the data from the database, currently just a test
@@ -70,11 +70,12 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
         
         #pd.read_sql to get a DataFrame directly
         #select Time and the tag_id column, filter where tag_id is not NULL
-        df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
-        print(f"this is the df: {df}")
+        df = pd.read_sql(f"SELECT {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
         return df
+        
     except Exception as e:
         print(f"Unable to get df object for tag id: {e}")
+        return None
 
 
 #plots data for given tag id and returns html

@@ -216,7 +216,7 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
    #parse the formula entered by the user
    else:
        try: 
-          parse_formula(new_tag_id)
+          parse_formula(formula)
        except Exception as e:
           return HTMLResponse(f"""
                             <div id="new-tag-warning" hx-swap-oob="true">

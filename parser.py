@@ -61,7 +61,9 @@ class FormulaTransformer(Transformer):
     
     #everyt time the parser encounters a tag ID, return the df object for that tag
     def TAG_ID(self, token) -> pd.DataFrame:
-        tag_df = get_df(con_data, str(token))
+        tag_id = str(token)
+        tag_df = get_df(con_data, tag_id)
+        print(f"this is the tag df: {tag_df}")
         return tag_df
     
     #every time the parser encounters a factor node, return the factor
@@ -82,9 +84,9 @@ class FormulaTransformer(Transformer):
             right = args[i + 1]
 
             if operator.type == 'MULTIPLY':
-                result = result * right
+                     result = result * right
             elif operator.type == 'DIVIDE':
-                result = result / right
+                     result = result / right
             
             #index i by 2 to move along to the next operator and signal to the right of it
             i += 2
@@ -136,4 +138,4 @@ def parse_formula(expression: str) -> str:
     answer = FormulaTransformer().transform(tree)
     print(f'The answer is: {answer}')
 
-parse_formula('derivative(PI001)')
+#parse_formula("derivative(PI001)")
