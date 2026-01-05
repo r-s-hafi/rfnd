@@ -33,10 +33,10 @@
 
     <div id="formula-window">
         <div id="formula-input-container">
-            <form id="formula-form" hx-trigger="submit" hx-target="#plot-area">
-                <input id="formula-input" hx-post='/execute-formula' type="text" name="formula" class="input" placeholder="Enter formula">
-                <input id="new-tag-input" hx-post='/execute-formula' type="text" name="new_tag_id" class="input" placeholder="Enter new tag ID:">
-                <input type="button" hx-post='/execute-formula' name="execute_formula" class="button" value="Execute">
+            <form id="formula-form" hx-post='/execute-formula' hx-trigger="submit" hx-target="#plot-area">
+                <input id="formula-input" type="text" name="formula" class="input" placeholder="Enter formula">
+                <input id="new-tag-input" type="text" name="new_tag_id" class="input" placeholder="Enter new tag ID:">
+                <input type="submit" name="execute_formula" class="button" value="Execute">
             </form>
         </div>
         <div id="current-tags">

@@ -77,7 +77,27 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
         print(f"Unable to get df object for tag id: {e}")
         return None
 
+#insert formula tag into database
+def insert_new_tag(con: Connection, result: pd.DataFrame, new_tag_id: str) -> None:
+    try:
+        with con:
+            cur = con.cursor()
+            #create new column with the new tag id
+            cur.execute(f"ALTER TABLE process_data ADD COLUMN {new_tag_id} TEXT")
+            updated_data = []
 
+            #insert the value and rowid into updated data list
+            #can introduce latency if there is a large amount of data, could be optimized more
+            for i, value in enumerate(result[result.columns[1]]):
+                updated_data.append((value, i+1))
+
+            #write the updated data to the database
+            cur.executemany(f"UPDATE process_data SET {new_tag_id} = ? WHERE rowid = ?", updated_data)
+            con.commit()
+            
+    except Exception as e:
+        print(f"Unable to insert new tag into database: {e}")
+            
 #plots data for given tag id and returns html
 def generate_plots(con_data: Connection, con_preferences: Connection, current_plots: list) -> HTMLResponse:
     #initialize string to store html for all plots
@@ -121,7 +141,8 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
                 yaxis=dict(
                     gridcolor='#30363d',
                     showgrid=True,
-                    zeroline=False
+                    zeroline=False,
+                    tickformat='d'
                 ),
                 margin=dict(l=60, r=40, t=60, b=50),
                 hovermode='x unified'

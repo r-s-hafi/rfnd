@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 import sqlite3
 from datetime import datetime
 
-from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time
+from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
 from datamanipulation import detect_time_frame 
 from parser import parse_formula
 
@@ -186,12 +186,14 @@ async def go_past() -> HTMLResponse:
 
 #insert tag into formula
 @app.post("/insert-tag-into-formula")
-async def insert_tag_into_formula(tag_id: str = Form(), operation: str = Form(default="")) -> HTMLResponse:
-   new_formula = operation + tag_id
+async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(default="")) -> HTMLResponse:
+   new_formula = formula + tag_id
    return HTMLResponse(f"""
                            <div id="formula-input-container" hx-swap-oob="true">
-                              <form id="formula-form" hx-trigger="submit" hx-target="#plot-area">
-                                 <input type="text" id="formula-input" name="operation" class="input" placeholder="Enter formula" value="{new_formula}">
+                              <form id="formula-form" hx-post='/execute-formula' hx-trigger="submit" hx-target="#plot-area">
+                                 <input id="formula-input" type="text" name="formula" class="input" placeholder="Enter formula" value="{new_formula}">
+                                 <input id="new-tag-input" type="text" name="new_tag_id" class="input" placeholder="Enter new tag ID:">
+                                 <input type="submit" name="execute_formula" class="button" value="Execute">
                               </form>
                            </div>
 
@@ -213,10 +215,40 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                               <p>Please enter a new tag ID</p>
                            </div>
                            """)
-   #parse the formula entered by the user
+   #parse the formula entered by the user, perform the operations, and insert the new tag into the database
    else:
        try: 
-          parse_formula(formula)
+         #returns df object with operations performed
+         result = parse_formula(formula)
+         #rename the column to the new tag ID
+         result = result.rename(columns={result.columns[1]: new_tag_id})
+         #insert the new tag into the database
+         insert_new_tag(con_data, result, new_tag_id)
+
+         #new tag id is succesfully inserted into the database, add to current plots and plot count
+         global plot_count, current_plots
+         current_plots.append(new_tag_id)
+         plot_count += 1
+
+         #replot all data with new tag
+         try:
+            plot_html = generate_plots(con_data, con_preferences, current_plots)
+            return HTMLResponse(f"""
+                           <div id="plot-area" hx-swap-oob="true"">
+                              {plot_html}
+                           </div>
+                           <div id="current-tags-list" hx-swap-oob="true">
+                              <ul>
+                                 {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                              </ul>
+                           </div>
+                           """)
+            
+         except Exception as e:
+            return HTMLResponse(f"""
+                                 <h1>Error plotting data for tag {new_tag_id}</h1>
+                                 <p>{e}</p>
+                                 """)
        except Exception as e:
           return HTMLResponse(f"""
                             <div id="new-tag-warning" hx-swap-oob="true">
@@ -224,14 +256,14 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                             </div>
                             """)
     #once formula is parsed, get the tag data from database
-       try:
-          get_tag_id(new_tag_id)
-       except Exception as e:
-          return HTMLResponse(f"""
-                            <div id="new-tag-warning" hx-swap-oob="true">
-                               <p>Error getting tag ID: {e}</p>
-                            </div>
-                            """)
+       #try:
+       #   get_tag_id(new_tag_id)
+       #except Exception as e:
+        #  return HTMLResponse(f"""
+         #                   <div id="new-tag-warning" hx-swap-oob="true">
+          #                     <p>Error getting tag ID: {e}</p>
+          #                  </div>
+          #                  """)
 
 
 

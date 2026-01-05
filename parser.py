@@ -167,12 +167,8 @@ def parse_formula(expression: str) -> str:
     tree = parser.parse(expression)
     answer = FormulaTransformer().transform(tree)
     print(f'The answer is: {answer}')
+    return answer
 
-parse_formula("PI001 / 2")
+parse_formula("2 / 2")
 
 
-#5:30am wake up
-#6:00 get to gym
-#7:15 leave work
-#7:30am get home
-#8am start work
