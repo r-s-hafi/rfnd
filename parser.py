@@ -86,12 +86,14 @@ class FormulaTransformer(Transformer):
 
             #perform operations on two dataframes
             if isinstance(result, pd.DataFrame) and isinstance(right, pd.DataFrame):
-                for column in result.columns:
-                    if column != 'Time':
-                        if operator.type == 'MULTIPLY':
-                            result[column] = result[column] * right[column]
-                        elif operator.type == 'DIVIDE':
-                            result[column] = result[column] / right[column]
+                #get the data column names (non-Time columns) from each dataframe
+                result_data_col = [col for col in result.columns if col != 'Time'][0]
+                right_data_col = [col for col in right.columns if col != 'Time'][0]
+                
+                if operator.type == 'MULTIPLY':
+                    result[result_data_col] = result[result_data_col] * right[right_data_col]
+                elif operator.type == 'DIVIDE':
+                    result[result_data_col] = result[result_data_col] / right[right_data_col]
 
             #perform operations on a dataframe and a constant
             elif isinstance(result, pd.DataFrame):
@@ -133,10 +135,41 @@ class FormulaTransformer(Transformer):
             operator = args[i]
             right = args[i + 1]
 
-            if operator.type == 'ADD':
-                result = result + right
-            elif operator.type == 'SUBTRACT':
-                result = result - right
+            #perform operations on two dataframes
+            if isinstance(result, pd.DataFrame) and isinstance(right, pd.DataFrame):
+                #get the data column names (non-Time columns) from each dataframe
+                result_data_col = [col for col in result.columns if col != 'Time'][0]
+                right_data_col = [col for col in right.columns if col != 'Time'][0]
+                
+                if operator.type == 'ADD':
+                    result[result_data_col] = result[result_data_col] + right[right_data_col]
+                elif operator.type == 'SUBTRACT':
+                    result[result_data_col] = result[result_data_col] - right[right_data_col]
+
+            #perform operations on a dataframe and a constant
+            elif isinstance(result, pd.DataFrame):
+                for column in result.columns:
+                    if column != 'Time':
+                        if operator.type == 'ADD':
+                            result[column] = result[column] + right
+                        elif operator.type == 'SUBTRACT':
+                            result[column] = result[column] - right
+            
+            #perform operations on a constant and a dataframe
+            elif isinstance(right, pd.DataFrame):
+                for column in right.columns:
+                    if column != 'Time':
+                        if operator.type == 'ADD':
+                            right[column] = right[column] + result
+                        elif operator.type == 'SUBTRACT':
+                            right[column] = right[column] - result
+            
+            #perform operations on two constants
+            else:
+                if operator.type == 'ADD':
+                    result = result + right
+                elif operator.type == 'SUBTRACT':
+                    result = result - right
             
             #index i by 2 to move along to the next operator and signal to the right of it
             i += 2
@@ -166,9 +199,6 @@ parser = Lark(grammar, start='start')
 def parse_formula(expression: str) -> str:
     tree = parser.parse(expression)
     answer = FormulaTransformer().transform(tree)
-    print(f'The answer is: {answer}')
     return answer
-
-parse_formula("2 / 2")
 
 

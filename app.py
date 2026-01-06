@@ -217,9 +217,11 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                            """)
    #parse the formula entered by the user, perform the operations, and insert the new tag into the database
    else:
-       try: 
+      try: 
          #returns df object with operations performed
+         print('hello before parse')
          result = parse_formula(formula)
+         print('hello')
          #rename the column to the new tag ID
          result = result.rename(columns={result.columns[1]: new_tag_id})
          #insert the new tag into the database
@@ -227,34 +229,36 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
 
          #new tag id is succesfully inserted into the database, add to current plots and plot count
          global plot_count, current_plots
-         current_plots.append(new_tag_id)
-         plot_count += 1
+
+         if new_tag_id not in current_plots:
+            current_plots.append(new_tag_id)
+            plot_count += 1
 
          #replot all data with new tag
          try:
             plot_html = generate_plots(con_data, con_preferences, current_plots)
             return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
-                              {plot_html}
-                           </div>
-                           <div id="current-tags-list" hx-swap-oob="true">
-                              <ul>
-                                 {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
-                              </ul>
+                              <div id="plot-area" hx-swap-oob="true"">
+                                 {plot_html}
+                              </div>
+                              <div id="current-tags-list" hx-swap-oob="true">
+                                 <ul>
+                                    {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                                 </ul>
+                              </div>
+                              """)
+               
+         except Exception as e:
+               return HTMLResponse(f"""
+                                    <h1>Error plotting data for tag {new_tag_id}</h1>
+                                    <p>{e}</p>
+                                    """)
+      except Exception as e:
+         return HTMLResponse(f"""
+                           <div id="new-tag-warning" hx-swap-oob="true">
+                              <p>Error parsing formula: {e}</p>
                            </div>
                            """)
-            
-         except Exception as e:
-            return HTMLResponse(f"""
-                                 <h1>Error plotting data for tag {new_tag_id}</h1>
-                                 <p>{e}</p>
-                                 """)
-       except Exception as e:
-          return HTMLResponse(f"""
-                            <div id="new-tag-warning" hx-swap-oob="true">
-                               <p>Error parsing formula: {e}</p>
-                            </div>
-                            """)
     #once formula is parsed, get the tag data from database
        #try:
        #   get_tag_id(new_tag_id)

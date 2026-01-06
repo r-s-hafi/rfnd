@@ -83,7 +83,8 @@ def insert_new_tag(con: Connection, result: pd.DataFrame, new_tag_id: str) -> No
         with con:
             cur = con.cursor()
             #create new column with the new tag id
-            cur.execute(f"ALTER TABLE process_data ADD COLUMN {new_tag_id} TEXT")
+            #quote the column name to handle spaces and special characters
+            cur.execute(f'ALTER TABLE process_data ADD COLUMN "{new_tag_id}" TEXT')
             updated_data = []
 
             #insert the value and rowid into updated data list
@@ -92,7 +93,8 @@ def insert_new_tag(con: Connection, result: pd.DataFrame, new_tag_id: str) -> No
                 updated_data.append((value, i+1))
 
             #write the updated data to the database
-            cur.executemany(f"UPDATE process_data SET {new_tag_id} = ? WHERE rowid = ?", updated_data)
+            #quote the column name to handle spaces and special characters
+            cur.executemany(f'UPDATE process_data SET "{new_tag_id}" = ? WHERE rowid = ?', updated_data)
             con.commit()
             
     except Exception as e:
@@ -121,9 +123,11 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
 
         for tag_id in current_plots:
 
-            df = pd.read_sql(f"""SELECT Time, {tag_id}
+            df = pd.read_sql(f"""SELECT Time, "{tag_id}"
                             FROM process_data
-                            WHERE Time >= ? AND Time <= ? AND {tag_id} IS NOT NULL""", con_data, params=(start_time, end_time))
+                            WHERE Time >= ? AND Time <= ? AND "{tag_id}" IS NOT NULL""", con_data, params=(start_time, end_time))
+            #convert the tag_id column to numeric to ensure proper formatting
+            df[tag_id] = pd.to_numeric(df[tag_id], errors='coerce')
             fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
                 
             #configure the plot to be dark mode with better contrast
@@ -135,20 +139,25 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
                 title_font=dict(size=16, color='#e6edf3'),
                 xaxis=dict(
                     gridcolor='#30363d',
-                    showgrid=True,
-                    zeroline=False
+                    showgrid=False,
+                    zeroline=False,
+                    tickformat= '%m/%d/%Y %H:%M'
                 ),
                 yaxis=dict(
                     gridcolor='#30363d',
-                    showgrid=True,
+                    showgrid=False,
                     zeroline=False,
-                    tickformat='d'
+                    tickformat='.3g',
                 ),
                 margin=dict(l=60, r=40, t=60, b=50),
                 hovermode='x unified'
             )
+            #format hover tooltips to show 3 significant figures
+            fig.update_traces(hovertemplate='%{x}<br>%{y:.3g}<extra></extra>')
+
             stored_plot_html = pio.to_html(fig, config={'responsive': True})
             wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+
     except Exception as e:
         print(f"Unable to generate plots: {e}")
 
