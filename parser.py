@@ -198,7 +198,7 @@ parser = Lark(grammar, start='start')
 
 def parse_formula(expression: str) -> str:
     tree = parser.parse(expression)
-    answer = FormulaTransformer().transform(tree)
-    return answer
+    result = FormulaTransformer().transform(tree)
+    return result
 
 

@@ -78,7 +78,7 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
         return None
 
 #insert formula tag into database
-def insert_new_tag(con: Connection, result: pd.DataFrame, new_tag_id: str) -> None:
+def insert_new_tag(con: Connection, result: pd.DataFrame|float, new_tag_id: str) -> None:
     try:
         with con:
             cur = con.cursor()
@@ -89,8 +89,20 @@ def insert_new_tag(con: Connection, result: pd.DataFrame, new_tag_id: str) -> No
 
             #insert the value and rowid into updated data list
             #can introduce latency if there is a large amount of data, could be optimized more
-            for i, value in enumerate(result[result.columns[1]]):
-                updated_data.append((value, i+1))
+            #if the result is a dataframe, insert the values into the database
+            if isinstance(result, pd.DataFrame):
+                for i, value in enumerate(result[result.columns[1]]):
+                    updated_data.append((value, i+1))
+
+            #if the result is a constant, insert the value into the database for each entry in the time column
+            elif isinstance(result, float):
+                with con:
+                    cur = con.cursor()
+                    cur.execute("""SELECT COUNT(*) FROM process_data""")
+                    rows = cur.fetchone()[0]
+
+                for i in range(rows):
+                    updated_data.append((result, i+1))
 
             #write the updated data to the database
             #quote the column name to handle spaces and special characters
@@ -316,6 +328,16 @@ def update_anchor_time(con_data: Connection, con_preferences: Connection, operat
         except Exception as e:
             print(f"Unable to find oldest database entry: {e}")
 
+
+def create_float_df(result: float, new_tag_id: str, con_data: Connection) -> pd.DataFrame:
+    with con_data:
+        cur = con_data.cursor()
+        cur.execute("""SELECT MAX(TIME) FROM process_data""")
+        max_time = cur.fetchone()[0]
+        max_time = datetime.strptime(max_time, "%Y-%m-%d %H:%M:%S")
+    rows = 1
+    cols = [new_tag_id]
+    return pd.DataFrame(data=np.full(rows, cols, result), columns=cols)
 
     
         

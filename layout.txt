@@ -47,9 +47,18 @@ Built lark grammar and class
 Made get_df function to grab df object of existing tags needed to execute formulas to create new tags
 
 Next steps:
-Hook up parser df output to database and store new tag that user creates
-    Use generate_plots to plot new tag
-    Edge cases/polish grammar
+Turn tag into an object
+Add more fxns
+
+
+Bugs:
+Please enter new tag ID
+Parser edge cases (a lot)
+
+Future:
+Make time columns for each individual tag
+Tag buttons
+Edge cases/polish grammar
 
 
 

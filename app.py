@@ -1,10 +1,11 @@
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 import sqlite3
-from datetime import datetime
+import pandas as pd
+import numpy as np
 
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
 from datamanipulation import detect_time_frame 
@@ -219,11 +220,12 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
    else:
       try: 
          #returns df object with operations performed
-         print('hello before parse')
          result = parse_formula(formula)
-         print('hello')
-         #rename the column to the new tag ID
-         result = result.rename(columns={result.columns[1]: new_tag_id})
+
+         #rename the column to the new tag ID if the result is a dataframe, if the result is a const, no operation is necessary
+         if isinstance(result, pd.DataFrame):
+            result = result.rename(columns={result.columns[1]: new_tag_id})
+            
          #insert the new tag into the database
          insert_new_tag(con_data, result, new_tag_id)
 
