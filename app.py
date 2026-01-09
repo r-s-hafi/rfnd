@@ -48,7 +48,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
    global plot_count, current_plots
    
-   tag = Tag(tag_id.upper(), None, Tag.get_color() )
+   tag = Tag(str(tag_id).upper(), None, Tag.get_color() )
 
    #check for repeat plots
    if tag.id in current_plots:
@@ -228,7 +228,7 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
          if isinstance(result, pd.DataFrame):
             result = result.rename(columns={result.columns[1]: new_tag_id})
          
-         tag = Tag(new_tag_id, result, Tag.get_color())
+         tag = Tag(str(new_tag_id), result, Tag.get_color())
 
          #insert the new tag into the database, creates a tag object as well
          insert_new_tag(con_data, tag)
@@ -249,8 +249,10 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                               </div>
                               <div id="current-tags-list" hx-swap-oob="true">
                                  <ul>
-                                    {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                                    {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
                                  </ul>
+                              </div>
+                              <div id="new-tag-warning" hx-swap-oob="true">
                               </div>
                               """)
                
@@ -265,15 +267,6 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                               <p>Error parsing formula: {e}</p>
                            </div>
                            """)
-    #once formula is parsed, get the tag data from database
-       #try:
-       #   get_tag_id(new_tag_id)
-       #except Exception as e:
-        #  return HTMLResponse(f"""
-         #                   <div id="new-tag-warning" hx-swap-oob="true">
-          #                     <p>Error getting tag ID: {e}</p>
-          #                  </div>
-          #                  """)
 
 
 
