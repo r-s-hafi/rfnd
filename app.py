@@ -7,8 +7,9 @@ import sqlite3
 import pandas as pd
 import numpy as np
 
+from models import Tag
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
-from datamanipulation import detect_time_frame 
+from utility import detect_time_frame
 from parser import parse_formula
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
@@ -46,15 +47,16 @@ async def formula_docs(request: Request) -> HTMLResponse:
 async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
    global plot_count, current_plots
-   tag_id = tag_id.upper()
+   
+   tag = Tag(tag_id.upper(), None, Tag.get_color() )
 
    #check for repeat plots
-   if tag_id in current_plots:
-      print(f"Plot already exists for tag {tag_id}")
+   if tag.id in current_plots:
+      print(f"Plot already exists for tag {tag.id}")
    
    else:
       #if try block runs, add plot count to html response
-      current_plots.append(tag_id)
+      current_plots.append(tag)
       plot_count += 1
 
    try:
@@ -66,7 +68,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                      </div>
                      <div id="current-tags-list" hx-swap-oob="true">
                         <ul>
-                           {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                           {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
                         </ul>
                      </div>
                      """)
@@ -225,15 +227,17 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
          #rename the column to the new tag ID if the result is a dataframe, if the result is a const, no operation is necessary
          if isinstance(result, pd.DataFrame):
             result = result.rename(columns={result.columns[1]: new_tag_id})
-            
-         #insert the new tag into the database
-         insert_new_tag(con_data, result, new_tag_id)
+         
+         tag = Tag(new_tag_id, result, Tag.get_color())
+
+         #insert the new tag into the database, creates a tag object as well
+         insert_new_tag(con_data, tag)
 
          #new tag id is succesfully inserted into the database, add to current plots and plot count
          global plot_count, current_plots
 
-         if new_tag_id not in current_plots:
-            current_plots.append(new_tag_id)
+         if tag.id not in current_plots:
+            current_plots.append(tag)
             plot_count += 1
 
          #replot all data with new tag

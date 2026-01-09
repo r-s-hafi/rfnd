@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.io as pio
 from datetime import datetime, timedelta
 import re
+from models import Tag
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -78,37 +79,37 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
         return None
 
 #insert formula tag into database
-def insert_new_tag(con: Connection, result: pd.DataFrame|float, new_tag_id: str) -> None:
+def insert_new_tag(con: Connection, tag: Tag) -> None:
     try:
         with con:
             cur = con.cursor()
             #create new column with the new tag id
             #quote the column name to handle spaces and special characters
-            cur.execute(f'ALTER TABLE process_data ADD COLUMN "{new_tag_id}" TEXT')
+            cur.execute(f'ALTER TABLE process_data ADD COLUMN "{tag.id}" TEXT')
             updated_data = []
 
             #insert the value and rowid into updated data list
             #can introduce latency if there is a large amount of data, could be optimized more
             #if the result is a dataframe, insert the values into the database
-            if isinstance(result, pd.DataFrame):
-                for i, value in enumerate(result[result.columns[1]]):
+            if isinstance(tag.data, pd.DataFrame):
+                for i, value in enumerate(tag.data[tag.data.columns[1]]):
                     updated_data.append((value, i+1))
 
             #if the result is a constant, insert the value into the database for each entry in the time column
-            elif isinstance(result, float):
+            elif isinstance(tag.data, float):
                 with con:
                     cur = con.cursor()
                     cur.execute("""SELECT COUNT(*) FROM process_data""")
                     rows = cur.fetchone()[0]
 
                 for i in range(rows):
-                    updated_data.append((result, i+1))
+                    updated_data.append((tag.data, i+1))
 
             #write the updated data to the database
             #quote the column name to handle spaces and special characters
-            cur.executemany(f'UPDATE process_data SET "{new_tag_id}" = ? WHERE rowid = ?', updated_data)
+            cur.executemany(f'UPDATE process_data SET "{tag.id}" = ? WHERE rowid = ?', updated_data)
             con.commit()
-            
+
     except Exception as e:
         print(f"Unable to insert new tag into database: {e}")
             
@@ -126,48 +127,12 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
             cur.execute("SELECT anchor_time FROM preferences")
             anchor_time = cur.fetchone()[0]
 
-
-        print(f"Time frame: {time_frame}")
-        print(f"Anchor time: {anchor_time}")
-
         end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
         start_time = end_time - timedelta(minutes=time_frame)
 
-        for tag_id in current_plots:
+        for tag in current_plots:
 
-            df = pd.read_sql(f"""SELECT Time, "{tag_id}"
-                            FROM process_data
-                            WHERE Time >= ? AND Time <= ? AND "{tag_id}" IS NOT NULL""", con_data, params=(start_time, end_time))
-            #convert the tag_id column to numeric to ensure proper formatting
-            df[tag_id] = pd.to_numeric(df[tag_id], errors='coerce')
-            fig = px.line(df, x="Time", y=tag_id, title=f"{tag_id}", labels={'Time': 'Time', tag_id: 'Value'})
-                
-            #configure the plot to be dark mode with better contrast
-            fig.update_layout(
-                template="plotly_dark",
-                paper_bgcolor='#1c2128',
-                plot_bgcolor='#0d1117',
-                font=dict(color='#c9d1d9', size=12),
-                title_font=dict(size=16, color='#e6edf3'),
-                xaxis=dict(
-                    gridcolor='#30363d',
-                    showgrid=False,
-                    zeroline=False,
-                    tickformat= '%m/%d/%Y %H:%M'
-                ),
-                yaxis=dict(
-                    gridcolor='#30363d',
-                    showgrid=False,
-                    zeroline=False,
-                    tickformat='.3g',
-                ),
-                margin=dict(l=60, r=40, t=60, b=50),
-                hovermode='x unified'
-            )
-            #format hover tooltips to show 3 significant figures
-            fig.update_traces(hovertemplate='%{x}<br>%{y:.3g}<extra></extra>')
-
-            stored_plot_html = pio.to_html(fig, config={'responsive': True})
+            stored_plot_html = Tag.plot(tag, con_data, start_time, end_time)
             wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
 
     except Exception as e:

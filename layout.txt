@@ -47,7 +47,10 @@ Built lark grammar and class
 Made get_df function to grab df object of existing tags needed to execute formulas to create new tags
 
 Next steps:
-Turn tag into an object
+CURRENTLY - Turn tag into an object
+Add tag colors
+Allow tags to be in same graph
+Allow tags to be in same y axis
 Add more fxns
 
 
