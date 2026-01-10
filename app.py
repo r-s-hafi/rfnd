@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Cookie
 from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
@@ -11,7 +11,7 @@ import re
 
 from models import Tag
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
-from utility import detect_time_frame
+from utility import detect_time_frame, handle_cookie
 from parser import parse_formula
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
@@ -26,17 +26,31 @@ con_preferences = sqlite3.connect("preferences.db")
 plot_count = 0
 #list of tags currently plotted
 current_plots = []
+#dictionary to store user sessions
+user_sessions = {}
 
 #initializes database and global variables
 @app.get("/")
-async def initialize(request: Request) -> HTMLResponse:
+async def initialize(request: Request, session_token: str = Cookie(None)) -> HTMLResponse:
+
+   #checks if there is a user session in the cookie, if not creates uuid and adds to user_sessions
+   session_token = handle_cookie(session_token, user_sessions)
+   response = templates.TemplateResponse(request, "index.html", {"text": ""})
+   response.set_cookie(
+      key="session_token",
+      value = session_token,
+      max_age = 86400,
+      httponly = True,
+   )
+
    #initialize database and populate with the data from the csv\
    global current_plots
    current_plots = []
    initialize_db(con_data)
    initialize_preferences(con_preferences)
    #return homepage "index.html"
-   return templates.TemplateResponse(request, "index.html")
+   
+   return response
 
 #renders the formula documentation page
 @app.get("/formula_docs")

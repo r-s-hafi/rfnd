@@ -1,5 +1,15 @@
 import matplotlib.colors as mcolors 
 import random
+import uuid
+
+def handle_cookie(session_token: str = None, user_sessions: dict = None) -> str:
+
+    #checks if there is no session token or if the session token has not been assigned to a user yet
+    if not session_token or session_token not in user_sessions:
+        session_token = str(uuid.uuid4())
+    
+    return session_token
+
 
 def detect_time_frame(time_frame: str) -> float:
 
@@ -57,6 +67,7 @@ def detect_time_frame(time_frame: str) -> float:
     #if the program makes it to this point without returning a tuple, the time frame is invalid
     print("please enter a valid time frame")
     return None, None
+
 
 
     
