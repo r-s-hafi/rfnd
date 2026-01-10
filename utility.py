@@ -2,13 +2,16 @@ import matplotlib.colors as mcolors
 import random
 import uuid
 
-def handle_cookie(session_token: str = None, user_sessions: dict = None) -> str:
+def handle_cookie(session_token: str = None, user_sessions: dict = None) -> tuple[str, bool]:
 
     #checks if there is no session token or if the session token has not been assigned to a user yet
     if not session_token or session_token not in user_sessions:
         session_token = str(uuid.uuid4())
+        is_new_user = True
+    else:
+        is_new_user = False
     
-    return session_token
+    return session_token, is_new_user
 
 def check_cookie(session_token: str, user_sessions: dict) -> bool:
     if session_token and session_token in user_sessions:

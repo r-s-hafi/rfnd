@@ -1,9 +1,10 @@
 from sqlite3 import Connection
 import pandas as pd
+import numpy as np
 from fastapi.responses import HTMLResponse
 from datetime import datetime, timedelta
 import re
-from models import Tag
+from models import Tag, User
 
 #creates process data database and populates with data from data.csv
 def initialize_db(con: Connection) -> None:
@@ -22,39 +23,10 @@ def initialize_db(con: Connection) -> None:
     except Exception as e:
         print(f"Unable to import data: {e}")
 
-def initialize_preferences(con: Connection) -> None:
+def update_preferences(time_frame: float, user: User) -> None:
     try:
-        with con:
-            cur = con.cursor()
-            cur.execute("""
-                        CREATE TABLE IF NOT EXISTS preferences(
-                        time_frame int,
-                        anchor_time datetime
-                        )""")
-            con.commit()
-
-            #check if preferences already exist
-            cur.execute("SELECT 1 FROM preferences where time_frame is not null")
-            exists = cur.fetchone()
-            
-            #only insert if table is empty
-            if not exists:
-                #set default time frame to 1 week and anchor time to current time
-                cur.execute("INSERT INTO preferences (time_frame, anchor_time) VALUES (?, ?)", 
-                           (60, datetime.now().replace(microsecond=0)))
-
-
-    except Exception as e:
-        print(f"Unable to initialize user preferences: {e}")
-
-def update_preferences(con: Connection, time_frame: float) -> None:
-    try:
-        with con:
-            cur = con.cursor()
-            # Update all rows (should only be one row based on initialize_preferences)
-            cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, datetime.now().replace(microsecond=0)))
-            con.commit()
-
+        user.time_frame = time_frame
+        user.anchor_time = datetime.now().replace(microsecond=0)
     except Exception as e:
         print(f"Unable to update user preferences: {e}")
 
@@ -109,23 +81,21 @@ def insert_new_tag(con: Connection, tag: Tag) -> None:
         print(f"Unable to insert new tag into database: {e}")
             
 #plots data for given tag id and returns html
-def generate_plots(con_data: Connection, con_preferences: Connection, current_plots: list) -> HTMLResponse:
+def generate_plots(con_data: Connection, user: User) -> HTMLResponse:
     #initialize string to store html for all plots
     wrapped_html = ""
     stored_plot_html = ""
 
-    try:#get time frame from preferences
-        with con_preferences:
-            cur = con_preferences.cursor()
-            cur.execute("SELECT time_frame FROM preferences")
-            time_frame = cur.fetchone()[0]
-            cur.execute("SELECT anchor_time FROM preferences")
-            anchor_time = cur.fetchone()[0]
+    #get time frame from user
+    try:
+        # anchor_time is already a datetime object, no need to parse
+        if isinstance(user.anchor_time, str):
+            end_time = datetime.strptime(user.anchor_time, "%Y-%m-%d %H:%M:%S")
+        else:
+            end_time = user.anchor_time
+        start_time = end_time - timedelta(minutes=user.time_frame)
 
-        end_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
-        start_time = end_time - timedelta(minutes=time_frame)
-
-        for tag in current_plots:
+        for tag in user.current_plots:
 
             stored_plot_html = Tag.plot(tag, con_data, start_time, end_time)
             wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
@@ -135,7 +105,7 @@ def generate_plots(con_data: Connection, con_preferences: Connection, current_pl
 
     return wrapped_html
 
-def update_anchor_time(con_data: Connection, con_preferences: Connection, operation: str) -> None:
+def update_anchor_time(con_data: Connection, user: User, operation: str) -> None:
     #update the anchor time to be the oldest point + current time frame
     if operation == "go_past":
         try:
@@ -150,43 +120,17 @@ def update_anchor_time(con_data: Connection, con_preferences: Connection, operat
             first_point = datetime.strptime(first_point, "%Y-%m-%d %H:%M:%S")
             
             #update anchor point to be the oldest point + the current timeframe
-            with con_preferences:
-                cur = con_preferences.cursor()
-                cur.execute("SELECT * FROM preferences where time_frame is not null")
-                time_frame = cur.fetchone()[0]
-
-                #make the new anchor point the oldest point in the database + the current time frame
-                print(f'this is the first point {first_point}')
-                print(f'this is the timedelta: {timedelta(minutes=time_frame)}')
-                new_anchor = first_point + timedelta(minutes=time_frame)
-                print(f'this is the new anchor: {new_anchor}')
-
-                #update database with the new anchor point
-                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+            new_anchor = first_point + timedelta(minutes=user.time_frame)   
+            user.anchor_time = new_anchor
                 
         except Exception as e:
-            print(f"Unable to find oldest database entry: {e}")
+            print(f"Unable to update anchor time: {e}")
 
     
     #update the anchor point to go backwards by the current timeframe
     if operation == "go_back":
         try: 
-            with con_preferences:
-                cur = con_preferences.cursor()
-                cur.execute("SELECT * FROM preferences where time_frame is not null")
-                #create dummy variable to store data from preference database
-                preference_data = cur.fetchone()
-                time_frame = preference_data[0]
-                anchor_time = preference_data[1]
-
-                print(f'time_frame = {time_frame}')
-                print(f'anchor_time = {anchor_time}')
-
-                #convert the anchor time into datetime object compatible with timedelta
-                anchor_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
-
-                #make the new anchor point the old one minus the amount of time specificed by the time frame
-                new_anchor = anchor_time - timedelta(minutes=time_frame)
+            new_anchor = user.anchor_time - timedelta(minutes=user.time_frame)
 
             #check if the user is trying to step previous to the oldest datapoint in the set
             #if so, set the anchor point to be the oldest point in the set + the current timeframe
@@ -205,18 +149,15 @@ def update_anchor_time(con_data: Connection, con_preferences: Connection, operat
             except Exception as e:
                 print(f"Unable to find oldest database entry: {e}")
                 
-            first_anchor = first_point + timedelta(minutes=time_frame)
+            first_anchor = first_point + timedelta(minutes=user.time_frame)
                 
             if new_anchor < first_anchor:
-                print(f'''the oldest time point in the dataset is {first_point}, adding timeframe {time_frame}
+                print(f'''the oldest time point in the dataset is {first_point}, adding timeframe {user.time_frame}
                 makes the oldest possible time frame {first_anchor}. Because the proposed new anchor {new_anchor} is 
                 earlier in time than this oldest time frame, we are setting the new anchor to be {first_anchor}''')
                 new_anchor = first_anchor
 
-            with con_preferences:
-                cur = con_preferences.cursor()
-                #update database with the new anchor point
-                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+            user.anchor_time = new_anchor
             
         except Exception as e:
             print(f"Unable to step back: {e}")
@@ -225,29 +166,13 @@ def update_anchor_time(con_data: Connection, con_preferences: Connection, operat
     #update the anchor time to go forwards by the current time frame
     if operation == "go_forward":
         try: 
-            with con_preferences:
-                cur = con_preferences.cursor()
-                cur.execute("SELECT * FROM preferences where time_frame is not null")
-                #create dummy variable to store data from preference database
-                preference_data = cur.fetchone()
-                time_frame = preference_data[0]
-                anchor_time = preference_data[1]
+            new_anchor = user.anchor_time + timedelta(minutes=user.time_frame)
 
-                print(f'time_frame = {time_frame}')
-                print(f'anchor_time = {anchor_time}')
+            #if the user tries to skip past the current time, set the anchor to the current time
+            if new_anchor > datetime.now():
+                new_anchor = datetime.now().replace(microsecond=0)
 
-                #convert the anchor time into datetime object compatible with timedelta
-                anchor_time = datetime.strptime(anchor_time, "%Y-%m-%d %H:%M:%S")
-
-                #make the new anchor point the old one minus the amount of time specificed by the time frame
-                new_anchor = anchor_time + timedelta(minutes=time_frame)
-
-                #if the user tries to skip past the current time, set the anchor to the current time
-                if new_anchor > datetime.now():
-                    new_anchor = datetime.now().replace(microsecond=0)
-
-                #update database with the new anchor point
-                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+            user.anchor_time = new_anchor
             
         except Exception as e:
             print(f"Unable to step forward: {e}")
@@ -271,22 +196,10 @@ def update_anchor_time(con_data: Connection, con_preferences: Connection, operat
             most_recent_point = datetime.strptime(most_recent_point, "%Y-%m-%d %H:%M:%S")
             
             #update anchor point to be the oldest point + the current timeframe
-            with con_preferences:
-                cur = con_preferences.cursor()
-                cur.execute("SELECT * FROM preferences where time_frame is not null")
-                time_frame = cur.fetchone()[0]
-
-                #make the new anchor point the most recent point in the database
-                print(f'this is the most recent point {most_recent_point}')
-                print(f'this is the timedelta: {timedelta(minutes=time_frame)}')
-                new_anchor = most_recent_point
-                print(f'this is the new anchor: {new_anchor}')
-
-                #update database with the new anchor point
-                cur.execute("UPDATE preferences SET time_frame = ?, anchor_time = ?", (time_frame, new_anchor))
+            user.anchor_time = most_recent_point
  
         except Exception as e:
-            print(f"Unable to find oldest database entry: {e}")
+            print(f"Unable to update anchor time: {e}")
 
 
 def create_float_df(result: float, new_tag_id: str, con_data: Connection) -> pd.DataFrame:

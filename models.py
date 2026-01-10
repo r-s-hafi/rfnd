@@ -1,22 +1,26 @@
 from fastapi.responses import HTMLResponse
-import pandas as pd
-import random
-import matplotlib.colors as mcolors
 from sqlite3 import Connection
 from datetime import datetime
+
+import pandas as pd
+import matplotlib.colors as mcolors
 import plotly.express as px
 import plotly.io as pio
+
 import re
+import random
 
 
 class User:
-    def __init__(self, session_token: str, current_plots: list):
+    def __init__(self, session_token: str, current_plots: list, time_frame: int, anchor_time: datetime):
         self.session_token = session_token
         self.current_plots = current_plots
+        self.time_frame = time_frame
+        self.anchor_time = anchor_time
+
 
 class Tag:
     def __init__(self, id: str, data: pd.DataFrame | float, color: str):
-
         self.id = id
         self.data = data
         self.color = color

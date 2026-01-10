@@ -3,14 +3,16 @@ from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from html import escape
-import sqlite3
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
+
+import sqlite3
 import re
 
 from models import User, Tag
-from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
+from database import initialize_db, generate_plots, update_preferences, update_anchor_time, insert_new_tag
 from utility import detect_time_frame, handle_cookie, check_cookie
 from parser import parse_formula
 
@@ -20,7 +22,6 @@ templates = Jinja2Templates('./templates')
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 con_data = sqlite3.connect("process_data.db")
-con_preferences = sqlite3.connect("preferences.db")
 
 #dictionary to store user sessions
 user_sessions = {}
@@ -30,8 +31,15 @@ user_sessions = {}
 async def initialize(request: Request, session_token: str = Cookie(None)) -> HTMLResponse:
 
    #checks if there is a user session in the cookie, if not creates uuid and adds to user_sessions
-   session_token = handle_cookie(session_token, user_sessions)
+   session_token, is_new_user = handle_cookie(session_token, user_sessions)
    
+   if is_new_user:
+      #create user object
+      user = User(session_token, current_plots = [], time_frame = 60, anchor_time = datetime.now().replace(microsecond=0))
+      user_sessions[session_token] = user
+   else:
+      user = user_sessions[session_token]   
+
    response = templates.TemplateResponse(request, "index.html", {"text": ""})
 
    #set the cookies in the users browser
@@ -42,13 +50,9 @@ async def initialize(request: Request, session_token: str = Cookie(None)) -> HTM
       httponly = True,
    )
 
-   #create user object
-   user = User(session_token, current_plots = [])
-   user_sessions[session_token] = user
-
    #initialize database and populate with the data from the csv
    initialize_db(con_data)
-   initialize_preferences(con_preferences)
+
    
    return response
 
@@ -79,7 +83,8 @@ async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) ->
       tag = Tag(str(tag_id).upper(), None, Tag.get_color() )
 
       #check for repeat plots
-      if tag.id in user.current_plots:
+      existing_tag_ids = [tag.id for tag in user.current_plots]
+      if tag.id in existing_tag_ids:
          print(f"Plot already exists for tag {tag.id}")
       
       else:
@@ -88,7 +93,7 @@ async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) ->
 
       try:
          #call plot data to collect tag data for queried tag and all other currently plotted tags
-         plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+         plot_html = generate_plots(con_data, user)
          tag_id = tag.id
          return HTMLResponse(f"""
                         <div id="plot-area" hx-swap-oob="true"">
@@ -122,12 +127,12 @@ async def update_time_frame(time_frame: str = Form(), session_token: str = Cooki
       if cleaned_time_frame:
          print(f"Time frame will beupdated to {cleaned_time_frame} minutes")
          
-         #update the preferences database with the most recent anchor time and the desired time frame
-         update_preferences(con_preferences, cleaned_time_frame)
-         print(f"Current plots: {user.current_plots}")
+         #update the user preferences with the desired time frame
+         update_preferences(cleaned_time_frame, user)
+
          try:
             #call plot data to collect tag data for all currently plotted tags
-            plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+            plot_html = generate_plots(con_data, user)
             return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -156,10 +161,10 @@ async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
    else:
       return HTMLResponse(f"Session not found")
    
-   update_anchor_time(con_data, con_preferences, "go_past")
+   update_anchor_time(con_data, user, "go_past")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+      plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -182,10 +187,10 @@ async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
    else:
       return HTMLResponse(f"Session not found")
    
-   update_anchor_time(con_data, con_preferences, "go_back")
+   update_anchor_time(con_data, user, "go_back")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+      plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -208,10 +213,10 @@ async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
    else:
       return HTMLResponse(f"Session not found")
    
-   update_anchor_time(con_data, con_preferences, "go_forward")
+   update_anchor_time(con_data, user, "go_forward")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+      plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -234,10 +239,10 @@ async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
    else:
       return HTMLResponse(f"Session not found")
    
-   update_anchor_time(con_data, con_preferences, "go_present")
+   update_anchor_time(con_data, user, "go_present")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+      plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -317,12 +322,13 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
             insert_new_tag(con_data, tag)
 
             #new tag id is succesfully inserted into the database, add to current plots and plot count
-            if tag.id not in user.current_plots:
+            existing_tag_ids = [tag.id for tag in user.current_plots]
+            if tag.id not in existing_tag_ids:
                user.current_plots.append(tag)
 
             #replot all data with new tag
             try:
-               plot_html = generate_plots(con_data, con_preferences, user.current_plots)
+               plot_html = generate_plots(con_data, user)
                return HTMLResponse(f"""
                                  <div id="plot-area" hx-swap-oob="true"">
                                     {plot_html}
