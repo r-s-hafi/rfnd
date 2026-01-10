@@ -212,7 +212,7 @@ async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(defa
 
                            <div id="current-tags-list" hx-swap-oob="true">
                               <ul>
-                                 {''.join(f'<button type="button" id="{tag_id}" name="tag_id" value="{tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag_id}</button>' for tag_id in current_plots)}
+                                 {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
                               </ul>
                            </div>
                         """)
@@ -257,7 +257,6 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                current_plots.append(tag)
                plot_count += 1
 
-            new_tag_id = escape(tag.id)
             #replot all data with new tag
             try:
                plot_html = generate_plots(con_data, con_preferences, current_plots)
@@ -267,7 +266,7 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                                  </div>
                                  <div id="current-tags-list" hx-swap-oob="true">
                                     <ul>
-                                       {''.join(f'<button type="button" id="{new_tag_id}" name="tag_id" value="{new_tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{new_tag_id}</button>' for tag in current_plots)}
+                                       {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
                                     </ul>
                                  </div>
                                  <div id="new-tag-warning" hx-swap-oob="true">
@@ -276,7 +275,7 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
                   
             except Exception as e:
                   return HTMLResponse(f"""
-                                       <h1>Error plotting data for tag {new_tag_id}</h1>
+                                       <h1>Error plotting data for tag {tag.id}</h1>
                                        <p>{e}</p>
                                        """)
       except Exception as e:
