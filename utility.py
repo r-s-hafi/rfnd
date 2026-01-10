@@ -10,6 +10,11 @@ def handle_cookie(session_token: str = None, user_sessions: dict = None) -> str:
     
     return session_token
 
+def check_cookie(session_token: str, user_sessions: dict) -> bool:
+    if session_token and session_token in user_sessions:
+        return True
+    else:
+        return False
 
 def detect_time_frame(time_frame: str) -> float:
 

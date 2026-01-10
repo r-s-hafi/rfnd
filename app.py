@@ -9,9 +9,9 @@ import pandas as pd
 import numpy as np
 import re
 
-from models import Tag
+from models import User, Tag
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
-from utility import detect_time_frame, handle_cookie
+from utility import detect_time_frame, handle_cookie, check_cookie
 from parser import parse_formula
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
@@ -22,10 +22,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 con_data = sqlite3.connect("process_data.db")
 con_preferences = sqlite3.connect("preferences.db")
 
-#counter for number of plots
-plot_count = 0
-#list of tags currently plotted
-current_plots = []
 #dictionary to store user sessions
 user_sessions = {}
 
@@ -35,7 +31,10 @@ async def initialize(request: Request, session_token: str = Cookie(None)) -> HTM
 
    #checks if there is a user session in the cookie, if not creates uuid and adds to user_sessions
    session_token = handle_cookie(session_token, user_sessions)
+   
    response = templates.TemplateResponse(request, "index.html", {"text": ""})
+
+   #set the cookies in the users browser
    response.set_cookie(
       key="session_token",
       value = session_token,
@@ -43,12 +42,13 @@ async def initialize(request: Request, session_token: str = Cookie(None)) -> HTM
       httponly = True,
    )
 
-   #initialize database and populate with the data from the csv\
-   global current_plots
-   current_plots = []
+   #create user object
+   user = User(session_token, current_plots = [])
+   user_sessions[session_token] = user
+
+   #initialize database and populate with the data from the csv
    initialize_db(con_data)
    initialize_preferences(con_preferences)
-   #return homepage "index.html"
    
    return response
 
@@ -60,9 +60,14 @@ async def formula_docs(request: Request) -> HTMLResponse:
 
 #accepts the tag ID from the user and re-generates all plots in current session
 @app.post("/get-tag-id")
-async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
-   #declare plot count and current plots as global variables
-   global plot_count, current_plots
+async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
 
    #validate tag.id to prevent SQL injection
    #only allow alphanumeric characters, underscores (SQLite identifiers)
@@ -74,17 +79,16 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
       tag = Tag(str(tag_id).upper(), None, Tag.get_color() )
 
       #check for repeat plots
-      if tag.id in current_plots:
+      if tag.id in user.current_plots:
          print(f"Plot already exists for tag {tag.id}")
       
       else:
          #if try block runs, add plot count to html response
-         current_plots.append(tag)
-         plot_count += 1
+         user.current_plots.append(tag)
 
       try:
          #call plot data to collect tag data for queried tag and all other currently plotted tags
-         plot_html = generate_plots(con_data, con_preferences, current_plots)
+         plot_html = generate_plots(con_data, con_preferences, user.current_plots)
          tag_id = tag.id
          return HTMLResponse(f"""
                         <div id="plot-area" hx-swap-oob="true"">
@@ -92,7 +96,7 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
                         </div>
                         <div id="current-tags-list" hx-swap-oob="true">
                            <ul>
-                              {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
+                              {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                            </ul>
                         </div>
                         """)
@@ -105,7 +109,14 @@ async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
 
 #updates the time frame for the current session
 @app.post("/update-time-frame")
-async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
+async def update_time_frame(time_frame: str = Form(), session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    if time_frame:
       cleaned_time_frame = detect_time_frame(time_frame)
       if cleaned_time_frame:
@@ -113,10 +124,10 @@ async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
          
          #update the preferences database with the most recent anchor time and the desired time frame
          update_preferences(con_preferences, cleaned_time_frame)
-         print(f"Current plots: {current_plots}")
+         print(f"Current plots: {user.current_plots}")
          try:
             #call plot data to collect tag data for all currently plotted tags
-            plot_html = generate_plots(con_data, con_preferences, current_plots)
+            plot_html = generate_plots(con_data, con_preferences, user.current_plots)
             return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -137,11 +148,18 @@ async def update_time_frame(time_frame: str = Form()) -> HTMLResponse:
 
 #moves the anchor time as far baack as possible given the current time frame
 @app.post("/go-past")
-async def go_past() -> HTMLResponse:
+async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    update_anchor_time(con_data, con_preferences, "go_past")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -156,11 +174,18 @@ async def go_past() -> HTMLResponse:
 
 #moves the anchor time backwards by the current time frame
 @app.post("/go-back")
-async def go_back() -> HTMLResponse:
+async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    update_anchor_time(con_data, con_preferences, "go_back")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -175,11 +200,18 @@ async def go_back() -> HTMLResponse:
 
 #moves the anchor time forwards by the current time frame
 @app.post("/go-forward")
-async def go_back() -> HTMLResponse:
+async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    update_anchor_time(con_data, con_preferences, "go_forward")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -194,11 +226,18 @@ async def go_back() -> HTMLResponse:
 
 #moves the anchor time to the present time
 @app.post("/go-present")
-async def go_past() -> HTMLResponse:
+async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    update_anchor_time(con_data, con_preferences, "go_present")
    try:
       #call plot data to collect tag data for all currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, current_plots)
+      plot_html = generate_plots(con_data, con_preferences, user.current_plots)
       return HTMLResponse(f"""
                            <div id="plot-area" hx-swap-oob="true"">
                               {plot_html}
@@ -213,7 +252,14 @@ async def go_past() -> HTMLResponse:
 
 #insert tag into formula
 @app.post("/insert-tag-into-formula")
-async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(default="")) -> HTMLResponse:
+async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(default=""), session_token: str = Cookie(None)) -> HTMLResponse:
+   
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+   
    new_formula = formula + tag_id
    return HTMLResponse(f"""
                            <div id="formula-input-container" hx-swap-oob="true">
@@ -226,15 +272,21 @@ async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(defa
 
                            <div id="current-tags-list" hx-swap-oob="true">
                               <ul>
-                                 {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
+                                 {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                               </ul>
                            </div>
                         """)
 
 #execute formula by pasing and running appropriate operations functions
 @app.post("/execute-formula")
-async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HTMLResponse:
+async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), session_token: str = Cookie(None)) -> HTMLResponse:
    
+   #check cookie
+   if check_cookie(session_token, user_sessions):
+      user = user_sessions[session_token]
+   else:
+      return HTMLResponse(f"Session not found")
+
    #if no tag ID specified, return warning
    if not new_tag_id:
       return HTMLResponse(f"""
@@ -265,22 +317,19 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
             insert_new_tag(con_data, tag)
 
             #new tag id is succesfully inserted into the database, add to current plots and plot count
-            global plot_count, current_plots
-
-            if tag.id not in current_plots:
-               current_plots.append(tag)
-               plot_count += 1
+            if tag.id not in user.current_plots:
+               user.current_plots.append(tag)
 
             #replot all data with new tag
             try:
-               plot_html = generate_plots(con_data, con_preferences, current_plots)
+               plot_html = generate_plots(con_data, con_preferences, user.current_plots)
                return HTMLResponse(f"""
                                  <div id="plot-area" hx-swap-oob="true"">
                                     {plot_html}
                                  </div>
                                  <div id="current-tags-list" hx-swap-oob="true">
                                     <ul>
-                                       {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
+                                       {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                                     </ul>
                                  </div>
                                  <div id="new-tag-warning" hx-swap-oob="true">

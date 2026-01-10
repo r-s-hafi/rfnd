@@ -8,6 +8,12 @@ import plotly.express as px
 import plotly.io as pio
 import re
 
+
+class User:
+    def __init__(self, session_token: str, current_plots: list):
+        self.session_token = session_token
+        self.current_plots = current_plots
+
 class Tag:
     def __init__(self, id: str, data: pd.DataFrame | float, color: str):
 
