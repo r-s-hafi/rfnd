@@ -1,3 +1,4 @@
+from fastapi.responses import HTMLResponse
 import pandas as pd
 import random
 import matplotlib.colors as mcolors
@@ -5,6 +6,7 @@ from sqlite3 import Connection
 from datetime import datetime
 import plotly.express as px
 import plotly.io as pio
+import re
 
 class Tag:
     def __init__(self, id: str, data: pd.DataFrame | float, color: str):
@@ -20,6 +22,12 @@ class Tag:
 
     @staticmethod
     def plot(self, con_data: Connection, start_time: datetime, end_time: datetime) -> str:
+        
+        #validate tag.id to prevent SQL injection
+        #only allow alphanumeric characters, underscores, and spaces (SQLite identifiers)
+        if not re.match(r'^[a-zA-Z0-9_ ]+$', self.id):
+            return HTMLResponse(f"Invalid tag ID format: {self.id}. Only alphanumeric characters, underscores, and spaces are allowed.")
+        
         #read the data from the database
         df = pd.read_sql(f"""SELECT Time, "{self.id}"
                             FROM process_data

@@ -3,9 +3,11 @@ from fastapi.responses import HTMLResponse
 from fastapi.requests import Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from html import escape
 import sqlite3
 import pandas as pd
 import numpy as np
+import re
 
 from models import Tag
 from database import initialize_db, generate_plots, initialize_preferences, update_preferences, update_anchor_time, insert_new_tag
@@ -47,37 +49,45 @@ async def formula_docs(request: Request) -> HTMLResponse:
 async def get_tag_id(tag_id: str = Form()) -> HTMLResponse:
    #declare plot count and current plots as global variables
    global plot_count, current_plots
-   
-   tag = Tag(str(tag_id).upper(), None, Tag.get_color() )
 
-   #check for repeat plots
-   if tag.id in current_plots:
-      print(f"Plot already exists for tag {tag.id}")
-   
+   #validate tag.id to prevent SQL injection
+   #only allow alphanumeric characters, underscores (SQLite identifiers)
+   #no spaces allowed for non-user created tags
+   if not re.match(r'^[a-zA-Z0-9_]+$', tag_id):
+      return HTMLResponse(f"Invalid tag ID format.")
+
    else:
-      #if try block runs, add plot count to html response
-      current_plots.append(tag)
-      plot_count += 1
+      tag = Tag(str(tag_id).upper(), None, Tag.get_color() )
 
-   try:
-      #call plot data to collect tag data for queried tag and all other currently plotted tags
-      plot_html = generate_plots(con_data, con_preferences, current_plots)
-      return HTMLResponse(f"""
-                     <div id="plot-area" hx-swap-oob="true"">
-                        {plot_html}
-                     </div>
-                     <div id="current-tags-list" hx-swap-oob="true">
-                        <ul>
-                           {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
-                        </ul>
-                     </div>
-                     """)
+      #check for repeat plots
+      if tag.id in current_plots:
+         print(f"Plot already exists for tag {tag.id}")
       
-   except Exception as e:
-      return HTMLResponse(f"""
-                           <h1>Error plotting data for tag {tag_id}</h1>
-                           <p>{e}</p>
-                           """)
+      else:
+         #if try block runs, add plot count to html response
+         current_plots.append(tag)
+         plot_count += 1
+
+      try:
+         #call plot data to collect tag data for queried tag and all other currently plotted tags
+         plot_html = generate_plots(con_data, con_preferences, current_plots)
+         tag_id = tag.id
+         return HTMLResponse(f"""
+                        <div id="plot-area" hx-swap-oob="true"">
+                           {plot_html}
+                        </div>
+                        <div id="current-tags-list" hx-swap-oob="true">
+                           <ul>
+                              {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
+                           </ul>
+                        </div>
+                        """)
+         
+      except Exception as e:
+         return HTMLResponse(f"""
+                              <h1>Error plotting data for tag {tag_id}</h1>
+                              <p>{e}</p>
+                              """)
 
 #updates the time frame for the current session
 @app.post("/update-time-frame")
@@ -227,40 +237,48 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form()) -> HT
          #rename the column to the new tag ID if the result is a dataframe, if the result is a const, no operation is necessary
          if isinstance(result, pd.DataFrame):
             result = result.rename(columns={result.columns[1]: new_tag_id})
-         
-         tag = Tag(str(new_tag_id), result, Tag.get_color())
 
-         #insert the new tag into the database, creates a tag object as well
-         insert_new_tag(con_data, tag)
+         #validate new tag ID to prevent SQL injection
+         #only allow alphanumeric characters, underscores, and spaces (SQLite identifiers)
+         #spaces allowed for user-created formulas
+         if not re.match(r'^[a-zA-Z0-9_ ]+$', new_tag_id):
+            return HTMLResponse(f"Invalid tag ID format.")
 
-         #new tag id is succesfully inserted into the database, add to current plots and plot count
-         global plot_count, current_plots
+         else:
+            tag = Tag(str(new_tag_id), result, Tag.get_color())
 
-         if tag.id not in current_plots:
-            current_plots.append(tag)
-            plot_count += 1
+            #insert the new tag into the database, creates a tag object as well
+            insert_new_tag(con_data, tag)
 
-         #replot all data with new tag
-         try:
-            plot_html = generate_plots(con_data, con_preferences, current_plots)
-            return HTMLResponse(f"""
-                              <div id="plot-area" hx-swap-oob="true"">
-                                 {plot_html}
-                              </div>
-                              <div id="current-tags-list" hx-swap-oob="true">
-                                 <ul>
-                                    {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in current_plots)}
-                                 </ul>
-                              </div>
-                              <div id="new-tag-warning" hx-swap-oob="true">
-                              </div>
-                              """)
-               
-         except Exception as e:
+            #new tag id is succesfully inserted into the database, add to current plots and plot count
+            global plot_count, current_plots
+
+            if tag.id not in current_plots:
+               current_plots.append(tag)
+               plot_count += 1
+
+            new_tag_id = escape(tag.id)
+            #replot all data with new tag
+            try:
+               plot_html = generate_plots(con_data, con_preferences, current_plots)
                return HTMLResponse(f"""
-                                    <h1>Error plotting data for tag {new_tag_id}</h1>
-                                    <p>{e}</p>
-                                    """)
+                                 <div id="plot-area" hx-swap-oob="true"">
+                                    {plot_html}
+                                 </div>
+                                 <div id="current-tags-list" hx-swap-oob="true">
+                                    <ul>
+                                       {''.join(f'<button type="button" id="{new_tag_id}" name="tag_id" value="{new_tag_id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{new_tag_id}</button>' for tag in current_plots)}
+                                    </ul>
+                                 </div>
+                                 <div id="new-tag-warning" hx-swap-oob="true">
+                                 </div>
+                                 """)
+                  
+            except Exception as e:
+                  return HTMLResponse(f"""
+                                       <h1>Error plotting data for tag {new_tag_id}</h1>
+                                       <p>{e}</p>
+                                       """)
       except Exception as e:
          return HTMLResponse(f"""
                            <div id="new-tag-warning" hx-swap-oob="true">

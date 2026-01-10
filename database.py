@@ -1,9 +1,6 @@
 from sqlite3 import Connection
-from matplotlib import _preprocess_data
 import pandas as pd
 from fastapi.responses import HTMLResponse
-import plotly.express as px
-import plotly.io as pio
 from datetime import datetime, timedelta
 import re
 from models import Tag
@@ -64,10 +61,9 @@ def update_preferences(con: Connection, time_frame: float) -> None:
 #return df object for given tag id
 def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
     try:
-        #tag_id should match pattern (2 uppercase letters + 3 digits)
-        #helps prevent SQL injection
-        if not re.match(r'^[A-Z]{2}[0-9]{3}$', tag_id):
-            print(f"Invalid tag_id format: {tag_id}")
+        #validate if df follows correct regex pattern
+        if not re.match(r'^[a-zA-Z0-9_ ]+$', tag_id):
+            return HTMLResponse(f"Invalid tag ID format.")
         
         #pd.read_sql to get a DataFrame directly
         #select Time and the tag_id column, filter where tag_id is not NULL
@@ -81,10 +77,10 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
 #insert formula tag into database
 def insert_new_tag(con: Connection, tag: Tag) -> None:
     try:
+        
         with con:
             cur = con.cursor()
             #create new column with the new tag id
-            #quote the column name to handle spaces and special characters
             cur.execute(f'ALTER TABLE process_data ADD COLUMN "{tag.id}" TEXT')
             updated_data = []
 
@@ -106,7 +102,6 @@ def insert_new_tag(con: Connection, tag: Tag) -> None:
                     updated_data.append((tag.data, i+1))
 
             #write the updated data to the database
-            #quote the column name to handle spaces and special characters
             cur.executemany(f'UPDATE process_data SET "{tag.id}" = ? WHERE rowid = ?', updated_data)
             con.commit()
 

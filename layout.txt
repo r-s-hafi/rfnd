@@ -47,21 +47,28 @@ Built lark grammar and class
 Made get_df function to grab df object of existing tags needed to execute formulas to create new tags
 
 Next steps:
-CURRENTLY - Turn tag into an object
-Add tag colors
 Allow tags to be in same graph
 Allow tags to be in same y axis
 Add more fxns
 
 
 Bugs:
-Please enter new tag ID
+Fix buttons
 Parser edge cases (a lot)
 
 Future:
+Make data insertion fxn async
 Make time columns for each individual tag
-Tag buttons
 Edge cases/polish grammar
+
+Claude code review:
+Inconsistent error handling: Sometimes uses try-except blocks, sometimes doesn't. When they do use them, the exception handling is often too broad (except Exception as e)
+Global variables: Uses plot_count and current_plots as globals in app.py rather than using proper state management
+SQL injection awareness but incomplete implementation: Has a regex check for tag_id format to prevent SQL injection, but then uses f-strings for SQL queries anyway (which negates the protection)
+Commented-out code left in: The bottom of execute_formula() has commented-out code that should have been removed
+Redundant database connections: Opens SQLite connections at module level rather than using connection pooling or context managers consistently
+Mixed naming conventions: Some functions use snake_case consistently, but there's inconsistency in how things are organized
+
 
 
 
