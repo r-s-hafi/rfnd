@@ -62,6 +62,40 @@ async def formula_docs(request: Request) -> HTMLResponse:
    #return formula documentation page
    return templates.TemplateResponse(request, "formula_docs.html")
 
+#returns available tags in the database for the sidebar browser
+@app.get("/get-available-tags")
+async def get_available_tags() -> HTMLResponse:
+   try:
+      with con_data:
+         cur = con_data.cursor()
+         #get column names from the process_data table (excluding Time)
+         cur.execute("PRAGMA table_info(process_data)")
+         columns = cur.fetchall()
+         tags = [col[1] for col in columns if col[1] != 'Time']
+
+      #generate HTML for the tag list
+      tag_html = ""
+      for tag in tags:
+         tag_html += f'''
+            <button class="tag-item"
+                    hx-post="/get-tag-id"
+                    hx-target="#trend-area"
+                    hx-vals='{{"tag_id": "{tag}"}}'>
+               <span class="tag-item-icon"></span>
+               <span class="tag-item-name">{tag}</span>
+               <span class="tag-item-type">Signal</span>
+            </button>'''
+
+      #update the tag count
+      count_html = f'''
+         <span class="tag-count" id="available-tag-count" hx-swap-oob="true">{len(tags)}</span>
+      '''
+
+      return HTMLResponse(tag_html + count_html)
+
+   except Exception as e:
+      return HTMLResponse(f'<div class="tag-item">Error loading tags: {e}</div>')
+
 #accepts the tag ID from the user and re-generates all plots in current session
 @app.post("/get-tag-id")
 async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) -> HTMLResponse:
@@ -96,13 +130,11 @@ async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) ->
          plot_html = generate_plots(con_data, user)
          tag_id = tag.id
          return HTMLResponse(f"""
-                        <div id="plot-area" hx-swap-oob="true"">
+                        <div id="trend-area" hx-swap-oob="true">
                            {plot_html}
                         </div>
                         <div id="current-tags-list" hx-swap-oob="true">
-                           <ul>
-                              {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
-                           </ul>
+                           {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                         </div>
                         """)
          
@@ -134,7 +166,7 @@ async def update_time_frame(time_frame: str = Form(), session_token: str = Cooki
             #call plot data to collect tag data for all currently plotted tags
             plot_html = generate_plots(con_data, user)
             return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
+                           <div id="trend-area" hx-swap-oob="true">
                               {plot_html}
                            </div>
                            """)
@@ -166,7 +198,7 @@ async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
       #call plot data to collect tag data for all currently plotted tags
       plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
+                           <div id="trend-area" hx-swap-oob="true">
                               {plot_html}
                            </div>
                            """)
@@ -192,7 +224,7 @@ async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
       #call plot data to collect tag data for all currently plotted tags
       plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
+                           <div id="trend-area" hx-swap-oob="true">
                               {plot_html}
                            </div>
                            """)
@@ -218,7 +250,7 @@ async def go_back(session_token: str = Cookie(None)) -> HTMLResponse:
       #call plot data to collect tag data for all currently plotted tags
       plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
+                           <div id="trend-area" hx-swap-oob="true">
                               {plot_html}
                            </div>
                            """)
@@ -244,7 +276,7 @@ async def go_past(session_token: str = Cookie(None)) -> HTMLResponse:
       #call plot data to collect tag data for all currently plotted tags
       plot_html = generate_plots(con_data, user)
       return HTMLResponse(f"""
-                           <div id="plot-area" hx-swap-oob="true"">
+                           <div id="trend-area" hx-swap-oob="true">
                               {plot_html}
                            </div>
                            """)
@@ -267,18 +299,14 @@ async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(defa
    
    new_formula = formula + tag_id
    return HTMLResponse(f"""
-                           <div id="formula-input-container" hx-swap-oob="true">
-                              <form id="formula-form" hx-post='/execute-formula' hx-trigger="submit" hx-target="#plot-area">
-                                 <input id="formula-input" type="text" name="formula" class="input" placeholder="Enter formula" value="{new_formula}">
-                                 <input id="new-tag-input" type="text" name="new_tag_id" class="input" placeholder="Enter new tag ID:">
-                                 <input type="submit" name="execute_formula" class="button" value="Execute">
-                              </form>
-                           </div>
-
+                           <textarea id="formula-input"
+                                     name="formula"
+                                     class="formula-textarea"
+                                     placeholder="Enter formula (e.g., PI001 + TI001)"
+                                     rows="3"
+                                     hx-swap-oob="true">{new_formula}</textarea>
                            <div id="current-tags-list" hx-swap-oob="true">
-                              <ul>
-                                 {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
-                              </ul>
+                              {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                            </div>
                         """)
 
@@ -330,13 +358,11 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
             try:
                plot_html = generate_plots(con_data, user)
                return HTMLResponse(f"""
-                                 <div id="plot-area" hx-swap-oob="true"">
+                                 <div id="trend-area" hx-swap-oob="true">
                                     {plot_html}
                                  </div>
                                  <div id="current-tags-list" hx-swap-oob="true">
-                                    <ul>
-                                       {''.join(f'<button type="button" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
-                                    </ul>
+                                    {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
                                  </div>
                                  <div id="new-tag-warning" hx-swap-oob="true">
                                  </div>

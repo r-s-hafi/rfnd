@@ -32,7 +32,7 @@ def detect_time_frame(time_frame: str) -> float:
 
     else:
         num = float(time_frame_chars[0])
-        time = time_frame_chars[1]
+        time = time_frame_chars[1].lower()
         print(num, time)
 
     #check for the time fram string and return the total time in minutes

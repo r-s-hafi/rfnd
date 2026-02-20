@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(frontend-design)",
+      "WebSearch",
+      "WebFetch(domain:www.seeq.com)",
+      "WebFetch(domain:appsource.microsoft.com)",
+      "WebFetch(domain:support.seeq.com)"
+    ]
+  }
+}

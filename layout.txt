@@ -64,7 +64,6 @@ Edge cases/polish grammar
 
 Claude code review:
 Inconsistent error handling: Sometimes uses try-except blocks, sometimes doesn't. When they do use them, the exception handling is often too broad (except Exception as e)
-Global variables: Uses plot_count and current_plots as globals in app.py rather than using proper state management
 Commented-out code left in: The bottom of execute_formula() has commented-out code that should have been removed
 Redundant database connections: Opens SQLite connections at module level rather than using connection pooling or context managers consistently
 Mixed naming conventions: Some functions use snake_case consistently, but there's inconsistency in how things are organized

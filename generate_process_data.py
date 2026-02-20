@@ -34,5 +34,7 @@ def generate_process_data(num_minutes: int) -> None:
             writer.writerow(row_entry)
             row_entry.clear()
 
+    print('Process data generated!')
+
 
 generate_process_data(100000)

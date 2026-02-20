@@ -3,25 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!--css -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
         document.write('<link rel="stylesheet" href="/static/style.css?v=' + Date.now() + '">');
     </script>
-    <!-- htmx library -->
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <title>Formula Documentation</title>
+    <title>Formula Documentation | REFINED</title>
 </head>
 <body>
+    <!-- Simple Header for Docs Page -->
+    <header class="app-header">
+        <div class="header-left">
+            <a href="/" class="logo" style="text-decoration: none;">
+                <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="8" width="4" height="16" rx="1" fill="currentColor"/>
+                    <rect x="9" y="4" width="4" height="24" rx="1" fill="currentColor" opacity="0.8"/>
+                    <rect x="16" y="10" width="4" height="14" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="23" y="6" width="4" height="20" rx="1" fill="currentColor" opacity="0.4"/>
+                </svg>
+                <span class="logo-text">REFINED</span>
+            </a>
+            <nav class="header-nav">
+                <a href="/" class="nav-item">Workbench</a>
+                <span class="nav-item active">Formulas</span>
+            </nav>
+        </div>
+    </header>
+
     <div id="formula-docs-about">
         <h1>Formula Documentation</h1>
-        <p>This is the formula documentation page. Here you can find information about the formulas currently supported by rfnd.</p>
-        <p>To insert a tag into the formula, click on the button of the tag you want to insert or enter the tag id manually into the formula input field.</p>
-    </div>
+        <p>This documentation covers the formula syntax supported by REFINED for creating calculated signals from your process data.</p>
 
-    <div id="formula-docs-list">
-        <ul>
-            <li>Addition: =ADD(TAG1, TAG2)</li>
-        </ul>
+        <h2 style="margin-top: 2rem; font-size: 1.125rem; color: var(--text-primary);">Using Formulas</h2>
+        <p>To create a calculated signal:</p>
+        <ol style="color: var(--text-secondary); line-height: 1.8; padding-left: 1.5rem;">
+            <li>Enter your formula expression in the Formula Builder panel</li>
+            <li>Click on active trend tags to insert them into your formula</li>
+            <li>Provide a name for your new calculated signal</li>
+            <li>Click Execute to create the signal</li>
+        </ol>
+
+        <h2 style="margin-top: 2rem; font-size: 1.125rem; color: var(--text-primary);">Supported Operations</h2>
+        <div id="formula-docs-list">
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                <thead>
+                    <tr style="border-bottom: 2px solid var(--border-color);">
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-primary); font-weight: 600;">Operator</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-primary); font-weight: 600;">Description</th>
+                        <th style="text-align: left; padding: 0.75rem; color: var(--text-primary); font-weight: 600;">Example</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">+</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Addition</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">PI001 + TI001</code></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">-</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Subtraction</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">PI001 - 100</code></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">*</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Multiplication</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">TI001 * 1.8 + 32</code></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">/</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Division</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">PI001 / PI002</code></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">derivative()</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Rate of change</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">derivative(TI001)</code></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border-color);">
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">avg()</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Average value</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">avg(PI001)</code></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">sum()</code></td>
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">Sum of values</td>
+                        <td style="padding: 0.75rem;"><code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">sum(TI001)</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2 style="margin-top: 2rem; font-size: 1.125rem; color: var(--text-primary);">Tag ID Format</h2>
+        <p>Tag IDs follow the pattern of two uppercase letters followed by three digits (e.g., <code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">PI001</code>, <code style="background: var(--color-gray-100); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-mono);">TI001</code>). Custom calculated signals can include alphanumeric characters, underscores, and spaces.</p>
+
+        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <a href="/" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--color-primary); text-decoration: none; font-weight: 500;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Back to Workbench
+            </a>
+        </div>
     </div>
 </body>
 </html>

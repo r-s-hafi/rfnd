@@ -1,61 +1,337 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!--css -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script>
         document.write('<link rel="stylesheet" href="/static/style.css?v=' + Date.now() + '">');
     </script>
-    <!-- htmx library -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <title>rfnd</title>
+    <title>REFINED | Industrial Analytics</title>
 </head>
 <body>
-    <h1>Welcome to rfnd Industrial Analytics</h1>
-
-    <div id="get-tag-id">
-        <form hx-post="/get-tag-id" hx-trigger="submit" hx-target="#plot-area">
-            <input type="text" name="tag_id" class="input" placeholder="Enter tag ID">
-            <input type="submit" class="button" value="Search">
-        </form>
-    </div>
-
-    <div id="time-frame-selector">
-        <form hx-trigger="submit" hx-target="#plot-area">
-            <input type="text" hx-post='/update-time-frame'name="time_frame" class="input"  placeholder="Enter a time frame (ex: 1 week)">
-            <input type="button" hx-post='/go-past' name="go_past" class="button" value="<<">
-            <input type="button" hx-post='/go-back' name="go_back" class="button" value="<">
-            <input type="button" hx-post='/go-forward' name="go_forward" class="button" value=">">
-            <input type="button" hx-post='/go-present' name="go_present" class="button" value=">>">
-        </form>
-    </div>
-
-    <div id="formula-window">
-        <div id="formula-input-container">
-            <form id="formula-form" hx-post='/execute-formula' hx-trigger="submit" hx-target="#plot-area">
-                <input id="formula-input" type="text" name="formula" class="input" placeholder="Enter formula">
-                <input id="new-tag-input" type="text" name="new_tag_id" class="input" placeholder="Enter new tag ID:">
-                <input type="submit" name="execute_formula" class="button" value="Execute">
-            </form>
+    <!-- Top Header Bar -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="8" width="4" height="16" rx="1" fill="currentColor"/>
+                    <rect x="9" y="4" width="4" height="24" rx="1" fill="currentColor" opacity="0.8"/>
+                    <rect x="16" y="10" width="4" height="14" rx="1" fill="currentColor" opacity="0.6"/>
+                    <rect x="23" y="6" width="4" height="20" rx="1" fill="currentColor" opacity="0.4"/>
+                </svg>
+                <span class="logo-text">REFINED</span>
+            </div>
+            <nav class="header-nav">
+                <span class="nav-item active">Workbench</span>
+                <a href="/formula_docs" class="nav-item">Formulas</a>
+            </nav>
         </div>
-        <div id="current-tags">
-            <ul id="current-tags-list">
-            </ul>
+        <div class="header-center">
+            <div class="time-toolbar" id="time-toolbar">
+                <form class="time-controls" hx-trigger="submit" hx-target="#trend-area">
+                    <button type="button" class="time-btn" hx-post="/go-past" title="Go to oldest data">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="11 17 6 12 11 7"></polyline>
+                            <polyline points="18 17 13 12 18 7"></polyline>
+                        </svg>
+                    </button>
+                    <button type="button" class="time-btn" hx-post="/go-back" title="Step back">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <div class="time-range-display" id="time-range-display">
+                        <input type="text"
+                               name="time_frame"
+                               class="time-input"
+                               placeholder="1 hour"
+                               hx-post="/update-time-frame"
+                               hx-trigger="keyup[keyCode==13]"
+                               hx-target="#trend-area"
+                               title="Enter time range (e.g., 1 hour, 30 minutes, 1 week)">
+                    </div>
+                    <button type="button" class="time-btn" hx-post="/go-forward" title="Step forward">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+                    <button type="button" class="time-btn" hx-post="/go-present" title="Go to present">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 17 11 12 6 7"></polyline>
+                            <polyline points="13 17 18 12 13 7"></polyline>
+                        </svg>
+                    </button>
+                    <div class="time-divider"></div>
+                    <button type="button" class="time-btn live-btn" id="live-toggle" title="Toggle live update">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                </form>
+            </div>
         </div>
-        <div id="new-tag-warning">
+        <div class="header-right">
+            <div class="header-status">
+                <span class="status-indicator"></span>
+                <span class="status-text">Connected</span>
+            </div>
         </div>
+    </header>
 
-        <div id="about-formulas">
-            <a href="/formula_docs" class="button">About Formulas</a>
-        </div>
+    <!-- Main Application Layout -->
+    <div class="app-container">
+        <!-- Left Sidebar: Data Browser -->
+        <aside class="sidebar sidebar-left" id="sidebar-left">
+            <div class="sidebar-header">
+                <h3 class="sidebar-title">Data Browser</h3>
+                <button class="sidebar-collapse-btn" id="collapse-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Tag Search -->
+                <div class="search-section">
+                    <form class="tag-search-form" hx-post="/get-tag-id" hx-trigger="submit" hx-target="#trend-area">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text"
+                                   name="tag_id"
+                                   class="search-input"
+                                   placeholder="Search tags (e.g., PI001)">
+                        </div>
+                        <button type="submit" class="search-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Available Tags -->
+                <div class="tag-browser">
+                    <div class="browser-section">
+                        <div class="browser-section-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Process Data</span>
+                            <span class="tag-count" id="available-tag-count"></span>
+                        </div>
+                        <div class="tag-list" id="available-tags" hx-get="/get-available-tags" hx-trigger="load" hx-swap="innerHTML">
+                            <!-- Tags loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Trends -->
+                <div class="current-trends-section">
+                    <div class="section-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                        <span>Active Trends</span>
+                    </div>
+                    <div class="current-tags-list" id="current-tags-list">
+                        <!-- Active tags appear here -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content: Trend Display -->
+        <main class="main-content">
+            <!-- Trend Area -->
+            <div class="trend-container">
+                <div class="trend-area" id="trend-area">
+                    <!-- Empty State -->
+                    <div class="empty-state" id="empty-state">
+                        <div class="empty-state-icon">
+                            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="8" y="16" width="6" height="48" rx="2" fill="currentColor" opacity="0.2"/>
+                                <rect x="20" y="24" width="6" height="40" rx="2" fill="currentColor" opacity="0.3"/>
+                                <rect x="32" y="12" width="6" height="52" rx="2" fill="currentColor" opacity="0.4"/>
+                                <rect x="44" y="28" width="6" height="36" rx="2" fill="currentColor" opacity="0.5"/>
+                                <rect x="56" y="20" width="6" height="44" rx="2" fill="currentColor" opacity="0.6"/>
+                                <rect x="68" y="32" width="6" height="32" rx="2" fill="currentColor" opacity="0.7"/>
+                                <path d="M8 44 L20 38 L32 42 L44 36 L56 40 L68 34" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+                            </svg>
+                        </div>
+                        <h3 class="empty-state-title">No Signals Trended</h3>
+                        <p class="empty-state-text">Search for a tag in the sidebar or enter a tag ID to begin trending data</p>
+                    </div>
+                    <!-- Plots injected here -->
+                </div>
+
+                <!-- Investigation Range Mini-map -->
+                <div class="investigation-range" id="investigation-range">
+                    <div class="range-track">
+                        <div class="range-window" id="range-window"></div>
+                    </div>
+                    <div class="range-labels">
+                        <span class="range-start" id="range-start">--</span>
+                        <span class="range-end" id="range-end">--</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Sidebar: Details & Formulas -->
+        <aside class="sidebar sidebar-right" id="sidebar-right">
+            <div class="sidebar-header">
+                <button class="sidebar-collapse-btn" id="collapse-right">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                    </svg>
+                </button>
+                <h3 class="sidebar-title">Tools</h3>
+            </div>
+
+            <div class="sidebar-content">
+                <!-- Formula Builder -->
+                <div class="panel formula-panel">
+                    <div class="panel-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                            <line x1="8" y1="6" x2="16" y2="6"></line>
+                            <line x1="8" y1="10" x2="16" y2="10"></line>
+                            <line x1="8" y1="14" x2="12" y2="14"></line>
+                        </svg>
+                        <span>Formula Builder</span>
+                    </div>
+                    <div class="panel-content">
+                        <form id="formula-form" hx-post="/execute-formula" hx-trigger="submit" hx-target="#trend-area">
+                            <div class="form-group">
+                                <label class="form-label">Formula Expression</label>
+                                <div id="formula-input-container">
+                                    <textarea id="formula-input"
+                                              name="formula"
+                                              class="formula-textarea"
+                                              placeholder="Enter formula (e.g., PI001 + TI001)"
+                                              rows="3"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Output Signal Name</label>
+                                <input id="new-tag-input"
+                                       type="text"
+                                       name="new_tag_id"
+                                       class="form-input"
+                                       placeholder="e.g., CALC_001">
+                            </div>
+                            <div class="formula-actions">
+                                <button type="submit" class="btn btn-primary">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    Execute
+                                </button>
+                            </div>
+                        </form>
+                        <div id="new-tag-warning" class="formula-warning"></div>
+                    </div>
+                </div>
+
+                <!-- Quick Reference -->
+                <div class="panel reference-panel">
+                    <div class="panel-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>Quick Reference</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="reference-list">
+                            <div class="reference-item">
+                                <code>+</code>
+                                <span>Addition</span>
+                            </div>
+                            <div class="reference-item">
+                                <code>-</code>
+                                <span>Subtraction</span>
+                            </div>
+                            <div class="reference-item">
+                                <code>*</code>
+                                <span>Multiplication</span>
+                            </div>
+                            <div class="reference-item">
+                                <code>/</code>
+                                <span>Division</span>
+                            </div>
+                            <div class="reference-item">
+                                <code>derivative()</code>
+                                <span>Rate of change</span>
+                            </div>
+                            <div class="reference-item">
+                                <code>avg()</code>
+                                <span>Average value</span>
+                            </div>
+                        </div>
+                        <a href="/formula_docs" class="reference-link">
+                            View full documentation
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Signal Details -->
+                <div class="panel details-panel">
+                    <div class="panel-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <span>Signal Details</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="details-placeholder" id="signal-details">
+                            <p>Select a signal to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
     </div>
 
-    <div id="time-frame-area">
-        
-    </div>
-    <div id="plot-area">
-    </div>
-    
+    <script>
+        // Sidebar collapse functionality
+        document.getElementById('collapse-left')?.addEventListener('click', () => {
+            document.getElementById('sidebar-left').classList.toggle('collapsed');
+        });
+
+        document.getElementById('collapse-right')?.addEventListener('click', () => {
+            document.getElementById('sidebar-right').classList.toggle('collapsed');
+        });
+
+        // Hide empty state when plots are added
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.id === 'trend-area') {
+                const trendArea = document.getElementById('trend-area');
+                const emptyState = document.getElementById('empty-state');
+                if (trendArea && trendArea.querySelector('.plot-container')) {
+                    if (emptyState) emptyState.style.display = 'none';
+                }
+            }
+        });
+    </script>
 </body>
 </html>

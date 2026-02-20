@@ -3,7 +3,6 @@ from sqlite3 import Connection
 from datetime import datetime
 
 import pandas as pd
-import matplotlib.colors as mcolors
 import plotly.express as px
 import plotly.io as pio
 
@@ -28,7 +27,22 @@ class Tag:
     #utility fxn, not using it to create an instance, so use @staticmethod
     @staticmethod
     def get_color() -> str:
-            return random.choice(list(mcolors.CSS4_COLORS.keys()))
+            #professional color palette for data visualization
+            colors = [
+                '#0066cc',  # Primary blue
+                '#0d9488',  # Teal
+                '#7c3aed',  # Violet
+                '#ea580c',  # Orange
+                '#0891b2',  # Cyan
+                '#4f46e5',  # Indigo
+                '#059669',  # Emerald
+                '#dc2626',  # Red
+                '#2563eb',  # Blue
+                '#7c2d12',  # Brown
+                '#9333ea',  # Purple
+                '#15803d',  # Green
+            ]
+            return random.choice(colors)
 
     @staticmethod
     def plot(self, con_data: Connection, start_time: datetime, end_time: datetime) -> str:
@@ -47,27 +61,52 @@ class Tag:
         df[self.id] = pd.to_numeric(df[self.id], errors='coerce')
         fig = px.line(df, x="Time", y=self.id, title=f"{self.id}", labels={'Time': 'Time', self.id: 'Value'}, color_discrete_sequence=[self.color])
             
-        #configure the plot to be dark mode with better contrast
+        #configure the plot with light professional theme
         fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor='#1c2128',
-            plot_bgcolor='#0d1117',
-            font=dict(color='#c9d1d9', size=12),
-            title_font=dict(size=16, color='#e6edf3'),
+            template="plotly_white",
+            paper_bgcolor='#ffffff',
+            plot_bgcolor='#ffffff',
+            font=dict(
+                family="IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif",
+                color='#334155',
+                size=12
+            ),
+            title=dict(
+                text=f"<b>{self.id}</b>",
+                font=dict(size=14, color='#0f172a'),
+                x=0.02,
+                xanchor='left'
+            ),
             xaxis=dict(
-                gridcolor='#30363d',
-                showgrid=False,
+                gridcolor='#e2e8f0',
+                showgrid=True,
+                gridwidth=1,
                 zeroline=False,
-                tickformat= '%m/%d/%Y %H:%M'
+                tickformat='%m/%d %H:%M',
+                tickfont=dict(size=11, color='#64748b'),
+                linecolor='#e2e8f0',
+                showline=True,
+                mirror=False
             ),
             yaxis=dict(
-                gridcolor='#30363d',
-                showgrid=False,
+                gridcolor='#e2e8f0',
+                showgrid=True,
+                gridwidth=1,
                 zeroline=False,
                 tickformat='.3g',
+                tickfont=dict(size=11, color='#64748b'),
+                linecolor='#e2e8f0',
+                showline=True,
+                mirror=False
             ),
-            margin=dict(l=60, r=40, t=60, b=50),
-            hovermode='x unified'
+            margin=dict(l=60, r=24, t=48, b=48),
+            hovermode='x unified',
+            hoverlabel=dict(
+                bgcolor='#0f172a',
+                font_size=12,
+                font_family="IBM Plex Mono, monospace",
+                font_color='#ffffff'
+            )
         )
         #format hover tooltips to show 3 significant figures
         fig.update_traces(hovertemplate='%{x}<br>%{y:.3g}<extra></extra>')

@@ -98,7 +98,7 @@ def generate_plots(con_data: Connection, user: User) -> HTMLResponse:
         for tag in user.current_plots:
 
             stored_plot_html = Tag.plot(tag, con_data, start_time, end_time)
-            wrapped_html += f'<div id="plot">{stored_plot_html}</div>'
+            wrapped_html += f'<div class="plot-container">{stored_plot_html}</div>'
 
     except Exception as e:
         print(f"Unable to generate plots: {e}")
