@@ -14,7 +14,7 @@ import re
 from models import User, Tag
 from database import initialize_db, generate_plots, update_preferences, update_anchor_time, insert_new_tag
 from utility import detect_time_frame, handle_cookie, check_cookie
-from parser import parse_formula, FormulaEvaluationError
+from parser import parse_formula
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
@@ -388,12 +388,6 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
                                        <h1>Error plotting data for tag {tag.id}</h1>
                                        <p>{e}</p>
                                        """)
-      except FormulaEvaluationError as e:
-         return HTMLResponse(f"""
-                           <div id="new-tag-warning" hx-swap-oob="true">
-                              <p>Formula error: {e}</p>
-                           </div>
-                           """)
       except Exception as e:
          return HTMLResponse(f"""
                            <div id="new-tag-warning" hx-swap-oob="true">
