@@ -14,7 +14,7 @@ import re
 from models import User, Tag
 from database import initialize_db, generate_plots, update_preferences, update_anchor_time, insert_new_tag
 from utility import detect_time_frame, handle_cookie, check_cookie
-from parser import parse_formula
+from parser import parse_formula, FormulaEvaluationError
 
 #create the fastapi instance, connect CSS, Jinja2 templates to return HTML, and initialize databases
 app = FastAPI()
@@ -25,6 +25,14 @@ con_data = sqlite3.connect("process_data.db")
 
 #dictionary to store user sessions
 user_sessions = {}
+
+def render_current_tags_html(user: User) -> str:
+   return ''.join(
+      f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" '
+      f'hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>'
+      for tag in user.current_plots
+   )
+
 
 #initializes database and global variables
 @app.get("/")
@@ -61,6 +69,7 @@ async def initialize(request: Request, session_token: str = Cookie(None)) -> HTM
 async def formula_docs(request: Request) -> HTMLResponse:
    #return formula documentation page
    return templates.TemplateResponse(request, "formula_docs.html")
+
 
 #returns available tags in the database for the sidebar browser
 @app.get("/get-available-tags")
@@ -134,7 +143,7 @@ async def get_tag_id(tag_id: str = Form(), session_token: str = Cookie(None)) ->
                            {plot_html}
                         </div>
                         <div id="current-tags-list" hx-swap-oob="true">
-                           {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
+                           {render_current_tags_html(user)}
                         </div>
                         """)
          
@@ -306,7 +315,7 @@ async def insert_tag_into_formula(tag_id: str = Form(), formula: str = Form(defa
                                      rows="3"
                                      hx-swap-oob="true">{new_formula}</textarea>
                            <div id="current-tags-list" hx-swap-oob="true">
-                              {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
+                              {render_current_tags_html(user)}
                            </div>
                         """)
 
@@ -325,6 +334,12 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
       return HTMLResponse(f"""
                            <div id="new-tag-warning" hx-swap-oob="true">
                               <p>Please enter a new tag ID</p>
+                           </div>
+                           """)
+   if not formula or not formula.strip():
+      return HTMLResponse(f"""
+                           <div id="new-tag-warning" hx-swap-oob="true">
+                              <p>Please enter a formula expression</p>
                            </div>
                            """)
    #parse the formula entered by the user, perform the operations, and insert the new tag into the database
@@ -362,7 +377,7 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
                                     {plot_html}
                                  </div>
                                  <div id="current-tags-list" hx-swap-oob="true">
-                                    {''.join(f'<button type="button" class="active-tag" id="{tag.id}" name="tag_id" value="{tag.id}" hx-post="/insert-tag-into-formula" hx-include="#formula-input">{tag.id}</button>' for tag in user.current_plots)}
+                                    {render_current_tags_html(user)}
                                  </div>
                                  <div id="new-tag-warning" hx-swap-oob="true">
                                  </div>
@@ -373,6 +388,12 @@ async def execute_formula(formula: str = Form(), new_tag_id: str = Form(), sessi
                                        <h1>Error plotting data for tag {tag.id}</h1>
                                        <p>{e}</p>
                                        """)
+      except FormulaEvaluationError as e:
+         return HTMLResponse(f"""
+                           <div id="new-tag-warning" hx-swap-oob="true">
+                              <p>Formula error: {e}</p>
+                           </div>
+                           """)
       except Exception as e:
          return HTMLResponse(f"""
                            <div id="new-tag-warning" hx-swap-oob="true">

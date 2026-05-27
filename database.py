@@ -4,6 +4,7 @@ import numpy as np
 from fastapi.responses import HTMLResponse
 from datetime import datetime, timedelta
 import re
+from numbers import Real
 from models import Tag, User
 
 #creates process data database and populates with data from data.csv
@@ -35,11 +36,14 @@ def get_df(con: Connection, tag_id: str) -> pd.DataFrame:
     try:
         #validate if df follows correct regex pattern
         if not re.match(r'^[a-zA-Z0-9_ ]+$', tag_id):
-            return HTMLResponse(f"Invalid tag ID format.")
+            return None
         
         #pd.read_sql to get a DataFrame directly
         #select Time and the tag_id column, filter where tag_id is not NULL
-        df = pd.read_sql(f"SELECT Time, {tag_id} FROM process_data WHERE {tag_id} IS NOT NULL", con)
+        df = pd.read_sql(
+            f'SELECT Time, "{tag_id}" FROM process_data WHERE "{tag_id}" IS NOT NULL',
+            con
+        )
         return df
         
     except Exception as e:
@@ -64,7 +68,7 @@ def insert_new_tag(con: Connection, tag: Tag) -> None:
                     updated_data.append((value, i+1))
 
             #if the result is a constant, insert the value into the database for each entry in the time column
-            elif isinstance(tag.data, float):
+            elif isinstance(tag.data, Real):
                 with con:
                     cur = con.cursor()
                     cur.execute("""SELECT COUNT(*) FROM process_data""")
